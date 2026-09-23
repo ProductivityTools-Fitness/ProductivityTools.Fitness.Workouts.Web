@@ -1,13 +1,18 @@
+import { ExerciseImagePipe } from '../../exercise/exercise-image.pipe';
 import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WorkoutService, SaveSetRequest } from '../workout.service';
 import { Workout, WorkoutExercise, WorkoutSet } from '../models/workout';
+import { TrackingType } from '../../exercise/models/exercise';
+
+/** An editable cell of a set row. */
+export type SetField = 'weight' | 'reps' | 'duration' | 'distance';
 
 @Component({
   selector: 'app-workout-detail',
-  imports: [RouterLink, DatePipe, FormsModule],
+  imports: [RouterLink, DatePipe, FormsModule, ExerciseImagePipe],
   templateUrl: './workout-detail.component.html',
   styleUrl: './workout-detail.component.css',
 })
@@ -34,7 +39,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   titleInput = '';
   isSavingTitle = signal<boolean>(false);
   isAddingSet = signal<number | null>(null);
-  editingCell = signal<{ setId: number; field: 'weight' | 'reps' } | null>(null);
+  editingCell = signal<{ setId: number; field: SetField } | null>(null);
   savingSetId = signal<number | null>(null);
   isDeletingSet = signal<number | null>(null);
   setToDelete = signal<WorkoutSet | null>(null);
@@ -90,7 +95,82 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     return `Trening #${workout.workoutNumber ?? workout.id}`;
   }
 
-  formatPrevious(set: WorkoutSet): string {
+  trackingTypeOf(item: WorkoutExercise): TrackingType {
+    return item.exercise?.trackingType ?? 'WEIGHT_REPS';
+  }
+
+  tracksWeight(item: WorkoutExercise): boolean {
+    const type = this.trackingTypeOf(item);
+    return type === 'WEIGHT_REPS' || type === 'DURATION_WEIGHT';
+  }
+
+  tracksReps(item: WorkoutExercise): boolean {
+    const type = this.trackingTypeOf(item);
+    return type === 'WEIGHT_REPS' || type === 'REPS_ONLY';
+  }
+
+  tracksDuration(item: WorkoutExercise): boolean {
+    const type = this.trackingTypeOf(item);
+    return type === 'DURATION' || type === 'DURATION_WEIGHT' || type === 'DISTANCE_DURATION';
+  }
+
+  tracksDistance(item: WorkoutExercise): boolean {
+    return this.trackingTypeOf(item) === 'DISTANCE_DURATION';
+  }
+
+  /** Seconds as m:ss, or h:mm:ss once past an hour. Empty input renders as a dash. */
+  formatSetDuration(seconds?: number | null): string {
+    if (seconds == null) {
+      return '—';
+    }
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
+  }
+
+  formatSetDistance(meters?: number | null): string {
+    if (meters == null) {
+      return '—';
+    }
+    return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters} m`;
+  }
+
+  /**
+   * Accepts either plain seconds ("90") or a clock-style value ("1:30", "1:02:03"), because
+   * typing 1:30 is the natural way to enter a minute and a half.
+   */
+  parseDurationInput(rawValue: string | number): number | null {
+    const text = String(rawValue).trim();
+    if (!text) {
+      return null;
+    }
+    if (!text.includes(':')) {
+      const seconds = Number(text);
+      return Number.isFinite(seconds) && seconds >= 0 ? Math.round(seconds) : null;
+    }
+    const parts = text.split(':').map((part) => Number(part));
+    if (parts.some((part) => !Number.isFinite(part) || part < 0)) {
+      return null;
+    }
+    const total = parts.reduce((acc, part) => acc * 60 + part, 0);
+    return Math.round(total);
+  }
+
+  formatPrevious(set: WorkoutSet, item?: WorkoutExercise): string {
+    if (item && this.tracksDuration(item)) {
+      const parts: string[] = [];
+      if (this.tracksDistance(item) && set.prevDistanceMeters != null) {
+        parts.push(this.formatSetDistance(set.prevDistanceMeters));
+      }
+      if (set.prevDurationSeconds != null) {
+        parts.push(this.formatSetDuration(set.prevDurationSeconds));
+      }
+      return parts.length > 0 ? parts.join(' / ') : '—';
+    }
     if (set.prevWeightKg == null && set.prevReps == null) {
       return '—';
     }
@@ -385,13 +465,13 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  isEditing(setId: number | undefined, field: 'weight' | 'reps'): boolean {
+  isEditing(setId: number | undefined, field: SetField): boolean {
     if (!setId) return false;
     const current = this.editingCell();
     return current !== null && current.setId === setId && current.field === field;
   }
 
-  startEdit(set: WorkoutSet, field: 'weight' | 'reps'): void {
+  startEdit(set: WorkoutSet, field: SetField): void {
     if (this.isReadOnly() || !set.id) return;
     this.editingCell.set({ setId: set.id, field });
     setTimeout(() => {
@@ -469,6 +549,58 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     );
   }
 
+  saveDuration(set: WorkoutSet, rawValue: string | number): void {
+    if (this.isReadOnly() || !this.isEditing(set.id, 'duration')) {
+      return;
+    }
+    this.stopEdit();
+
+    const seconds = this.parseDurationInput(rawValue);
+    if (seconds === null || seconds === set.durationSeconds) {
+      return;
+    }
+
+    const previousDuration = set.durationSeconds;
+    set.durationSeconds = seconds;
+
+    this.sendSaveSet(
+      {
+        id: set.id!,
+        durationSeconds: seconds,
+        status: set.isCompleted,
+      },
+      () => {
+        set.durationSeconds = previousDuration;
+      }
+    );
+  }
+
+  saveDistance(set: WorkoutSet, rawValue: string | number): void {
+    if (this.isReadOnly() || !this.isEditing(set.id, 'distance')) {
+      return;
+    }
+    this.stopEdit();
+
+    const meters = Number(rawValue);
+    if (!Number.isFinite(meters) || meters < 0 || meters === set.distanceMeters) {
+      return;
+    }
+
+    const previousDistance = set.distanceMeters;
+    set.distanceMeters = meters;
+
+    this.sendSaveSet(
+      {
+        id: set.id!,
+        distanceMeters: meters,
+        status: set.isCompleted,
+      },
+      () => {
+        set.distanceMeters = previousDistance;
+      }
+    );
+  }
+
   sendSaveSet(request: SaveSetRequest, onRollback?: () => void): void {
     this.savingSetId.set(request.id);
     this.workoutService.saveSet(request).subscribe({
@@ -498,6 +630,8 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
             ...updatedSet,
             prevWeightKg: updatedSet.prevWeightKg !== undefined && updatedSet.prevWeightKg !== null ? updatedSet.prevWeightKg : s.prevWeightKg,
             prevReps: updatedSet.prevReps !== undefined && updatedSet.prevReps !== null ? updatedSet.prevReps : s.prevReps,
+            prevDurationSeconds: updatedSet.prevDurationSeconds !== undefined && updatedSet.prevDurationSeconds !== null ? updatedSet.prevDurationSeconds : s.prevDurationSeconds,
+            prevDistanceMeters: updatedSet.prevDistanceMeters !== undefined && updatedSet.prevDistanceMeters !== null ? updatedSet.prevDistanceMeters : s.prevDistanceMeters,
           } : s)),
         })),
       };

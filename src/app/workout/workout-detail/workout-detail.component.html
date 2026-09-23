@@ -93,9 +93,9 @@
                       class="exercise-icon-link"
                       [title]="'Zobacz szczegóły: ' + item.exercise.name"
                     >
-                      @if (item.exercise.gifUrl || item.exercise.iconUrl) {
+                      @if (item.exercise | exerciseImage; as imageSrc) {
                         <img
-                          [src]="item.exercise.gifUrl || item.exercise.iconUrl"
+                          [src]="imageSrc"
                           [alt]="item.exercise.name"
                           loading="lazy"
                           class="exercise-icon-img"
@@ -186,8 +186,18 @@
                           @if (!isReadOnly()) {
                             <th>Previous</th>
                           }
-                          <th class="col-weight">Weight (kg)</th>
-                          <th class="col-reps">Reps</th>
+                          @if (tracksDistance(item)) {
+                            <th class="col-distance">Distance (m)</th>
+                          }
+                          @if (tracksDuration(item)) {
+                            <th class="col-duration">Time</th>
+                          }
+                          @if (tracksWeight(item)) {
+                            <th class="col-weight">Weight (kg)</th>
+                          }
+                          @if (tracksReps(item)) {
+                            <th class="col-reps">Reps</th>
+                          }
                           <th class="col-complete" title="Complete"></th>
                           @if (!isReadOnly()) {
                             <th class="col-actions"></th>
@@ -200,55 +210,108 @@
                             <td class="col-set-num">{{ set.setNumber }}</td>
                             @if (!isReadOnly()) {
                               <td class="col-previous">
-                                <span class="prev-val">{{ formatPrevious(set) }}</span>
+                                <span class="prev-val">{{ formatPrevious(set, item) }}</span>
                               </td>
                             }
-                            <td class="col-weight" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'weight')">
-                              @if (!isReadOnly() && isEditing(set.id, 'weight')) {
-                                <input
-                                  #weightInput
-                                  [id]="'input-weight-' + set.id"
-                                  type="number"
-                                  inputmode="decimal"
-                                  step="0.5"
-                                  min="0"
-                                  class="inline-num-input"
-                                  [value]="set.weightKg"
-                                  (click)="$event.stopPropagation()"
-                                  (change)="saveWeight(set, weightInput.value)"
-                                  (blur)="saveWeight(set, weightInput.value)"
-                                  (keydown.enter)="saveWeight(set, weightInput.value)"
-                                  (keydown.escape)="stopEdit()"
-                                />
-                              } @else {
-                                <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Kliknij, aby edytować ciężar'">
-                                  <span class="cell-val">{{ set.weightKg }}</span>
-                                </div>
-                              }
-                            </td>
-                            <td class="col-reps" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'reps')">
-                              @if (!isReadOnly() && isEditing(set.id, 'reps')) {
-                                <input
-                                  #repsInput
-                                  [id]="'input-reps-' + set.id"
-                                  type="number"
-                                  inputmode="numeric"
-                                  step="1"
-                                  min="0"
-                                  class="inline-num-input"
-                                  [value]="set.reps"
-                                  (click)="$event.stopPropagation()"
-                                  (change)="saveReps(set, repsInput.value)"
-                                  (blur)="saveReps(set, repsInput.value)"
-                                  (keydown.enter)="saveReps(set, repsInput.value)"
-                                  (keydown.escape)="stopEdit()"
-                                />
-                              } @else {
-                                <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Kliknij, aby edytować powtórzenia'">
-                                  <span class="cell-val">{{ set.reps }}</span>
-                                </div>
-                              }
-                            </td>
+                            @if (tracksDistance(item)) {
+                              <td class="col-distance" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'distance')">
+                                @if (!isReadOnly() && isEditing(set.id, 'distance')) {
+                                  <input
+                                    #distanceInput
+                                    [id]="'input-distance-' + set.id"
+                                    type="number"
+                                    inputmode="decimal"
+                                    step="10"
+                                    min="0"
+                                    class="inline-num-input"
+                                    [value]="set.distanceMeters ?? ''"
+                                    (click)="$event.stopPropagation()"
+                                    (change)="saveDistance(set, distanceInput.value)"
+                                    (blur)="saveDistance(set, distanceInput.value)"
+                                    (keydown.enter)="saveDistance(set, distanceInput.value)"
+                                    (keydown.escape)="stopEdit()"
+                                  />
+                                } @else {
+                                  <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Click to edit distance'">
+                                    <span class="cell-val">{{ formatSetDistance(set.distanceMeters) }}</span>
+                                  </div>
+                                }
+                              </td>
+                            }
+                            @if (tracksDuration(item)) {
+                              <td class="col-duration" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'duration')">
+                                @if (!isReadOnly() && isEditing(set.id, 'duration')) {
+                                  <input
+                                    #durationInput
+                                    [id]="'input-duration-' + set.id"
+                                    type="text"
+                                    inputmode="numeric"
+                                    class="inline-num-input"
+                                    placeholder="1:30"
+                                    [value]="set.durationSeconds ?? ''"
+                                    (click)="$event.stopPropagation()"
+                                    (change)="saveDuration(set, durationInput.value)"
+                                    (blur)="saveDuration(set, durationInput.value)"
+                                    (keydown.enter)="saveDuration(set, durationInput.value)"
+                                    (keydown.escape)="stopEdit()"
+                                  />
+                                } @else {
+                                  <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Click to edit time (seconds or m:ss)'">
+                                    <span class="cell-val">{{ formatSetDuration(set.durationSeconds) }}</span>
+                                  </div>
+                                }
+                              </td>
+                            }
+                            @if (tracksWeight(item)) {
+                              <td class="col-weight" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'weight')">
+                                @if (!isReadOnly() && isEditing(set.id, 'weight')) {
+                                  <input
+                                    #weightInput
+                                    [id]="'input-weight-' + set.id"
+                                    type="number"
+                                    inputmode="decimal"
+                                    step="0.5"
+                                    min="0"
+                                    class="inline-num-input"
+                                    [value]="set.weightKg"
+                                    (click)="$event.stopPropagation()"
+                                    (change)="saveWeight(set, weightInput.value)"
+                                    (blur)="saveWeight(set, weightInput.value)"
+                                    (keydown.enter)="saveWeight(set, weightInput.value)"
+                                    (keydown.escape)="stopEdit()"
+                                  />
+                                } @else {
+                                  <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Kliknij, aby edytować ciężar'">
+                                    <span class="cell-val">{{ set.weightKg }}</span>
+                                  </div>
+                                }
+                              </td>
+                            }
+                            @if (tracksReps(item)) {
+                              <td class="col-reps" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'reps')">
+                                @if (!isReadOnly() && isEditing(set.id, 'reps')) {
+                                  <input
+                                    #repsInput
+                                    [id]="'input-reps-' + set.id"
+                                    type="number"
+                                    inputmode="numeric"
+                                    step="1"
+                                    min="0"
+                                    class="inline-num-input"
+                                    [value]="set.reps"
+                                    (click)="$event.stopPropagation()"
+                                    (change)="saveReps(set, repsInput.value)"
+                                    (blur)="saveReps(set, repsInput.value)"
+                                    (keydown.enter)="saveReps(set, repsInput.value)"
+                                    (keydown.escape)="stopEdit()"
+                                  />
+                                } @else {
+                                  <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Kliknij, aby edytować powtórzenia'">
+                                    <span class="cell-val">{{ set.reps }}</span>
+                                  </div>
+                                }
+                              </td>
+                            }
                             <td class="col-complete">
                               <button
                                 type="button"

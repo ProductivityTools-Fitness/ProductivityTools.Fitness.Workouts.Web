@@ -35,12 +35,9 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'exercisedb',
-
+    path: 'catalog',
     loadComponent: () =>
-      import('./exercise-db/exercise-db.component').then(
-        (m) => m.ExerciseDbComponent,
-      ),
+      import('./catalog/catalog.component').then((m) => m.CatalogComponent),
   },
   {
     path: 'hevy-import',

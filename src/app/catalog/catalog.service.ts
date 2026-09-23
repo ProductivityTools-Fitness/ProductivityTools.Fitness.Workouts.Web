@@ -2,13 +2,13 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { ExternalSearchResult } from './models/external-search-result';
+import { CatalogSearchResult } from './models/catalog-search-result';
 import { Exercise } from '../exercise/models/exercise';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ExerciseDbService {
+export class CatalogService {
   private readonly http = inject(HttpClient);
 
   searchExercises(
@@ -16,7 +16,7 @@ export class ExerciseDbService {
     bodyCategory?: string,
     equipmentCategory?: string,
     limit: number = 50,
-  ): Observable<ExternalSearchResult[]> {
+  ): Observable<CatalogSearchResult[]> {
     let params = new HttpParams().set('limit', limit);
     if (name && name.trim()) {
       params = params.set('name', name.trim());
@@ -28,16 +28,24 @@ export class ExerciseDbService {
       params = params.set('equipmentCategory', equipmentCategory.trim());
     }
 
-    return this.http.get<ExternalSearchResult[]>(
-      `${environment.apiUrl}/exercisedb/search`,
+    return this.http.get<CatalogSearchResult[]>(
+      `${environment.apiUrl}/catalog/search`,
       { params },
     );
   }
 
-  importExercise(externalExerciseId: string): Observable<Exercise> {
+  importExercise(catalogExerciseId: string): Observable<Exercise> {
     return this.http.post<Exercise>(
-      `${environment.apiUrl}/exercisedb/import/${externalExerciseId}`,
+      `${environment.apiUrl}/catalog/import/${catalogExerciseId}`,
       {},
     );
+  }
+
+  /**
+   * Address of the animation preview for an exercise that has not been imported yet.
+   * Served without authentication, because a browser cannot attach headers to an <img> request.
+   */
+  previewImageUrl(catalogExerciseId: string): string {
+    return `${environment.apiUrl}/catalog/${catalogExerciseId}/image`;
   }
 }

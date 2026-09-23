@@ -46,9 +46,9 @@
               class="media-link"
               [title]="'Zobacz szczegóły: ' + exercise.name"
             >
-              @if (exercise.gifUrl || exercise.iconUrl) {
+              @if (exercise | exerciseImage; as imageSrc) {
                 <img
-                  [src]="exercise.gifUrl || exercise.iconUrl"
+                  [src]="imageSrc"
                   [alt]="exercise.name"
                   loading="lazy"
                   class="exercise-img"

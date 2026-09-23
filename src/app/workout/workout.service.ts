@@ -9,10 +9,13 @@ export interface AddSetRequest {
   exerciseId: number;
 }
 
+/** Partial update: only the fields present are applied, the rest keep their stored value. */
 export interface SaveSetRequest {
   id: number;
   kg?: number;
   reps?: number;
+  durationSeconds?: number;
+  distanceMeters?: number;
   status?: boolean;
 }
 

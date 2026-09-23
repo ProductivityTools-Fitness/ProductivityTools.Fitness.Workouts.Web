@@ -8,8 +8,14 @@ export interface WorkoutSet {
   setNumber: number;
   weightKg: number;
   reps: number;
+  /** Seconds held, for timed exercises such as a plank. Null for weight x reps. */
+  durationSeconds?: number | null;
+  /** Metres covered, for cardio. Null otherwise. */
+  distanceMeters?: number | null;
   prevWeightKg?: number | null;
   prevReps?: number | null;
+  prevDurationSeconds?: number | null;
+  prevDistanceMeters?: number | null;
   isCompleted: boolean;
   createdAt?: string | Date;
 }

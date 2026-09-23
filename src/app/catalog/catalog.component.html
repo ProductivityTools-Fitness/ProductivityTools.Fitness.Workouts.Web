@@ -1,6 +1,6 @@
-<div class="exercisedb-container">
-  <h2>ExerciseDB - External Catalogue</h2>
-  <p class="subtitle">Search and import exercises from the global ExerciseDB database into your local catalogue.</p>
+<div class="catalog-container">
+  <h2>Exercise Catalogue</h2>
+  <p class="subtitle">Search and import exercises from the shared catalogue into your local list.</p>
 
   <form class="search-form" (ngSubmit)="onSearch()">
     <div class="search-input-group">
@@ -31,7 +31,7 @@
 
   @if (isLoading()) {
     <div class="loading-box">
-      <p>Searching exercises in ExerciseDB... Please wait.</p>
+      <p>Searching the exercise catalogue... Please wait.</p>
     </div>
   } @else if (searchResults().length > 0) {
     <div class="results-header">
@@ -39,11 +39,11 @@
     </div>
 
     <div class="results-grid">
-      @for (item of searchResults(); track item.externalExerciseId) {
+      @for (item of searchResults(); track item.catalogExerciseId) {
         <div class="exercise-card" [class.imported]="item.isAlreadyImported">
-          @if (item.gifUrl) {
+          @if (item.hasImage) {
             <div class="card-media">
-              <img [src]="item.gifUrl" [alt]="item.name" loading="lazy" />
+              <img [src]="imageUrl(item)" [alt]="item.name" loading="lazy" />
             </div>
           }
 
@@ -73,12 +73,12 @@
                 <button
                   type="button"
                   class="btn-toggle-instructions"
-                  (click)="toggleInstructions(item.externalExerciseId)"
+                  (click)="toggleInstructions(item.catalogExerciseId)"
                 >
-                  {{ expandedInstructions().has(item.externalExerciseId) ? '▲ Hide instructions' : '▼ Show instructions' }}
+                  {{ expandedInstructions().has(item.catalogExerciseId) ? '▲ Hide instructions' : '▼ Show instructions' }}
                 </button>
 
-                @if (expandedInstructions().has(item.externalExerciseId)) {
+                @if (expandedInstructions().has(item.catalogExerciseId)) {
                   <ol class="instructions-list">
                     @for (step of item.instructions; track step) {
                       <li>{{ step }}</li>
@@ -96,9 +96,9 @@
                   type="button"
                   class="btn btn-import"
                   (click)="importExercise(item)"
-                  [disabled]="importingIds().has(item.externalExerciseId)"
+                  [disabled]="importingIds().has(item.catalogExerciseId)"
                 >
-                  {{ importingIds().has(item.externalExerciseId) ? 'Importing...' : '+ Import Exercise' }}
+                  {{ importingIds().has(item.catalogExerciseId) ? 'Importing...' : '+ Import Exercise' }}
                 </button>
               }
             </div>
@@ -113,7 +113,7 @@
     </div>
   } @else {
     <div class="welcome-state">
-      <p>Type an exercise name or muscle group in the search bar above and click <strong>Search</strong> to query ExerciseDB.</p>
+      <p>Type an exercise name or muscle group in the search bar above and click <strong>Search</strong> to query the catalogue.</p>
     </div>
   }
 </div>

@@ -485,8 +485,15 @@
 
 .col-weight,
 .col-reps,
+.col-duration,
+.col-distance,
 .col-editable {
   text-align: center;
+}
+
+.col-duration,
+.col-distance {
+  white-space: nowrap;
 }
 
 .col-editable {

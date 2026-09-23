@@ -1,3 +1,4 @@
+import { ExerciseImagePipe } from '../exercise-image.pipe';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExerciseService } from '../exercise.service';
@@ -5,7 +6,7 @@ import { Exercise } from '../models/exercise';
 
 @Component({
   selector: 'app-exercise-detail',
-  imports: [RouterLink],
+  imports: [RouterLink, ExerciseImagePipe],
   templateUrl: './exercise-detail.component.html',
   styleUrl: './exercise-detail.component.css',
 })

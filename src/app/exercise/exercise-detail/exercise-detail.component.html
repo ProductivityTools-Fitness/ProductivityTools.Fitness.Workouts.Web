@@ -44,9 +44,9 @@
       </div>
 
       <div class="exercise-body">
-        @if (exercise()!.gifUrl || exercise()!.iconUrl) {
+        @if (exercise() | exerciseImage; as imageSrc) {
           <div class="exercise-media">
-            <img [src]="exercise()!.gifUrl || exercise()!.iconUrl" [alt]="exercise()!.name" />
+            <img [src]="imageSrc" [alt]="exercise()!.name" />
           </div>
         }
 

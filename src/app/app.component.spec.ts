@@ -93,7 +93,7 @@ describe('AppComponent', () => {
     const navLinks = compiled.querySelectorAll('nav a');
     const linkTexts = Array.from(navLinks).map((a) => a.textContent?.trim());
     expect(linkTexts).toContain('Hevy import');
-    expect(linkTexts).toContain('ExerciseDB');
+    expect(linkTexts).toContain('Catalogue');
     expect(linkTexts).toContain('Treningi');
   });
 });

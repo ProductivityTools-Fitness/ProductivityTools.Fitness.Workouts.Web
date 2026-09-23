@@ -1094,6 +1094,108 @@ describe('WorkoutDetailComponent', () => {
     });
   });
 
+  describe('Timed and cardio exercises', () => {
+    const plankExercise = {
+      orderIndex: 1,
+      exercise: { id: 58, name: 'front plank', isSystem: true, trackingType: 'DURATION' as const },
+      sets: [],
+    };
+    const runExercise = {
+      orderIndex: 1,
+      exercise: { id: 60, name: 'run', isSystem: true, trackingType: 'DISTANCE_DURATION' as const },
+      sets: [],
+    };
+    const benchExercise = {
+      orderIndex: 1,
+      exercise: { id: 1, name: 'barbell bench press', isSystem: true },
+      sets: [],
+    };
+
+    it('should show only the time column for a timed exercise', () => {
+      expect(component.tracksDuration(plankExercise)).toBe(true);
+      expect(component.tracksWeight(plankExercise)).toBe(false);
+      expect(component.tracksReps(plankExercise)).toBe(false);
+      expect(component.tracksDistance(plankExercise)).toBe(false);
+    });
+
+    it('should show distance and time for a cardio exercise', () => {
+      expect(component.tracksDistance(runExercise)).toBe(true);
+      expect(component.tracksDuration(runExercise)).toBe(true);
+      expect(component.tracksWeight(runExercise)).toBe(false);
+    });
+
+    it('should fall back to weight x reps when the exercise has no tracking type', () => {
+      expect(component.trackingTypeOf(benchExercise)).toBe('WEIGHT_REPS');
+      expect(component.tracksWeight(benchExercise)).toBe(true);
+      expect(component.tracksReps(benchExercise)).toBe(true);
+      expect(component.tracksDuration(benchExercise)).toBe(false);
+    });
+
+    it('should format a duration as a clock value', () => {
+      expect(component.formatSetDuration(45)).toBe('0:45');
+      expect(component.formatSetDuration(90)).toBe('1:30');
+      expect(component.formatSetDuration(3725)).toBe('1:02:05');
+      expect(component.formatSetDuration(null)).toBe('\u2014');
+    });
+
+    it('should accept both plain seconds and clock notation on input', () => {
+      expect(component.parseDurationInput('90')).toBe(90);
+      expect(component.parseDurationInput('1:30')).toBe(90);
+      expect(component.parseDurationInput('1:02:05')).toBe(3725);
+      expect(component.parseDurationInput('')).toBeNull();
+      expect(component.parseDurationInput('abc')).toBeNull();
+    });
+
+    it('should save a duration without touching weight or reps', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const set = { id: 301, setNumber: 1, weightKg: 0, reps: 0, isCompleted: false };
+      component.workout.set({
+        id: 1,
+        title: 'Core',
+        exercises: [{ ...plankExercise, sets: [{ ...set }] }],
+      });
+
+      const saveSetSpy = vi
+        .spyOn(workoutService, 'saveSet')
+        .mockReturnValue(of({ ...set, durationSeconds: 90 }));
+
+      component.startEdit(set, 'duration');
+      component.saveDuration(set, '1:30');
+
+      expect(saveSetSpy).toHaveBeenCalledWith({
+        id: 301,
+        durationSeconds: 90,
+        status: false,
+      });
+      expect(component.workout()?.exercises?.[0].sets?.[0].durationSeconds).toBe(90);
+    });
+
+    it('should show the previous time instead of kilos for a timed exercise', () => {
+      const set = {
+        id: 302,
+        setNumber: 1,
+        weightKg: 0,
+        reps: 0,
+        isCompleted: false,
+        prevDurationSeconds: 75,
+      };
+      expect(component.formatPrevious(set, plankExercise)).toBe('1:15');
+    });
+
+    it('should show distance and time as the previous value for cardio', () => {
+      const set = {
+        id: 303,
+        setNumber: 1,
+        weightKg: 0,
+        reps: 0,
+        isCompleted: false,
+        prevDurationSeconds: 1800,
+        prevDistanceMeters: 5000,
+      };
+      expect(component.formatPrevious(set, runExercise)).toBe('5.00 km / 30:00');
+    });
+  });
+
   describe('Exercise icons in workout detail', () => {
     it('should render exercise image icon when gifUrl or iconUrl is present', () => {
       const workoutWithImages: Workout = {
