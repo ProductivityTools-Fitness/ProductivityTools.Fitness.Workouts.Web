@@ -172,8 +172,51 @@
                       }
                     </div>
                   </div>
-                  @if (item.restTimerSeconds) {
-                    <span class="rest-timer">Rest: {{ item.restTimerSeconds }}s</span>
+                  @if (isEditingRestTimer(item)) {
+                    <div class="rest-timer-edit">
+                      <span class="rest-label">Rest:</span>
+                      <input
+                        type="text"
+                        inputmode="numeric"
+                        class="rest-timer-input"
+                        [(ngModel)]="restTimerInput"
+                        (keydown.enter)="saveRestTimer(item, restTimerInput)"
+                        (keydown.escape)="cancelEditRestTimer()"
+                        [disabled]="isSavingRestTimer(item)"
+                        placeholder="60"
+                        autofocus
+                      />
+                      <button
+                        class="btn btn-save btn-sm"
+                        (click)="saveRestTimer(item, restTimerInput)"
+                        [disabled]="isSavingRestTimer(item)"
+                      >
+                        {{ isSavingRestTimer(item) ? 'Saving...' : 'Save' }}
+                      </button>
+                      <button
+                        class="btn btn-cancel btn-sm"
+                        (click)="cancelEditRestTimer()"
+                        [disabled]="isSavingRestTimer(item)"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  } @else if (isResting(item)) {
+                    <span class="rest-timer resting" title="Rest in progress">
+                      ⏱ {{ formatSetDuration(restRemainingSeconds(item)) }}
+                      <button type="button" class="btn-skip-rest" (click)="skipRest()" title="Skip rest">Skip</button>
+                    </span>
+                  } @else if (!isReadOnly()) {
+                    <button
+                      type="button"
+                      class="rest-timer rest-timer-editable"
+                      (click)="startEditRestTimer(item)"
+                      title="Click to change the rest time (also used in future workouts)"
+                    >
+                      Rest: {{ formatRestTimer(item.restTimerSeconds) }}
+                    </button>
+                  } @else if (item.restTimerSeconds) {
+                    <span class="rest-timer">Rest: {{ formatRestTimer(item.restTimerSeconds) }}</span>
                   }
                 </div>
 
@@ -272,17 +315,17 @@
                                         >
                                           {{ isTimerRunning(set) ? '⏹' : '▶' }}
                                         </button>
-                                        @if (canResetTimer(set)) {
-                                          <button
-                                            type="button"
-                                            class="btn-timer btn-timer-reset"
-                                            (click)="resetTimer(set); $event.stopPropagation()"
-                                            title="Reset counter"
-                                            aria-label="Reset counter"
-                                          >
-                                            ↺
-                                          </button>
-                                        }
+                                        <button
+                                          type="button"
+                                          class="btn-timer btn-timer-reset"
+                                          [class.slot-hidden]="!canResetTimer(set)"
+                                          [disabled]="!canResetTimer(set)"
+                                          (click)="resetTimer(set); $event.stopPropagation()"
+                                          title="Reset counter"
+                                          aria-label="Reset counter"
+                                        >
+                                          ↺
+                                        </button>
                                       </div>
                                     }
                                   </div>
@@ -346,7 +389,7 @@
                                 [class.checked]="set.isCompleted"
                                 [class.completed]="set.isCompleted"
                                 [disabled]="isReadOnly() || savingSetId() === set.id"
-                                (click)="!isReadOnly() && completeSet(set)"
+                                (click)="!isReadOnly() && completeSet(set, item)"
                                 [title]="isReadOnly() ? (set.isCompleted ? 'Completed' : 'Not completed') : (set.isCompleted ? 'Reset set' : 'Complete set')"
                                 [attr.aria-label]="isReadOnly() ? (set.isCompleted ? 'Completed' : 'Not completed') : (set.isCompleted ? 'Reset set' : 'Complete set')"
                               >

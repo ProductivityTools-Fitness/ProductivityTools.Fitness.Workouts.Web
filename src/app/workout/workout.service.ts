@@ -33,6 +33,11 @@ export interface SaveExerciseNotesRequest {
   notes: string;
 }
 
+export interface SaveExerciseRestTimerRequest {
+  workoutExerciseId: number;
+  restTimerSeconds: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -92,6 +97,14 @@ export class WorkoutService {
 
   updateExerciseNotes(workoutExerciseId: number, notes: string): Observable<WorkoutExercise> {
     return this.saveExerciseNotes(workoutExerciseId, notes);
+  }
+
+  saveExerciseRestTimer(workoutExerciseId: number, restTimerSeconds: number): Observable<WorkoutExercise> {
+    const request: SaveExerciseRestTimerRequest = {
+      workoutExerciseId,
+      restTimerSeconds,
+    };
+    return this.http.post<WorkoutExercise>(`${environment.apiUrl}/workout/updateExerciseRestTimer`, request);
   }
 
   completeWorkout(workoutId: number): Observable<Workout> {

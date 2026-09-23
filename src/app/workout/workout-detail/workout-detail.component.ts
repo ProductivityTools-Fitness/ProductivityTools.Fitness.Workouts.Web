@@ -6,9 +6,13 @@ import { FormsModule } from '@angular/forms';
 import { WorkoutService, SaveSetRequest } from '../workout.service';
 import { Workout, WorkoutExercise, WorkoutSet } from '../models/workout';
 import { TrackingType } from '../../exercise/models/exercise';
+import { NotificationService } from '../../notification/notification.service';
 
 /** An editable cell of a set row. */
 export type SetField = 'weight' | 'reps' | 'duration' | 'distance';
+
+/** Same fallback the API uses when a user has no default rest time configured. */
+const DEFAULT_REST_SECONDS = 90;
 
 @Component({
   selector: 'app-workout-detail',
@@ -20,6 +24,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workoutService = inject(WorkoutService);
+  private readonly notificationService = inject(NotificationService);
 
   workoutId = signal<number | null>(null);
   workout = signal<Workout | null>(null);
@@ -55,6 +60,13 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   /** Sets whose time was typed or measured during this session. */
   private measuredDurationSetIds = signal<ReadonlySet<number>>(new Set<number>());
 
+  editingRestExerciseId = signal<number | null>(null);
+  restTimerInput = '';
+  savingRestExerciseId = signal<number | null>(null);
+  /** Rest countdown running after a set was marked as done. */
+  restCountdown = signal<{ exerciseKey: number; endsAtMs: number; totalSeconds: number } | null>(null);
+  private restCountdownTimeout: ReturnType<typeof setTimeout> | null = null;
+
   ngOnInit(): void {
     this.startDurationTimer();
     this.route.queryParamMap.subscribe((params) => {
@@ -73,6 +85,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.stopTimer();
     this.stopDurationTimer();
+    this.clearRestCountdownTimeout();
   }
 
   startDurationTimer(): void {
@@ -139,44 +152,23 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * A set added from a past workout arrives with the previous time already copied into
-   * durationSeconds. That value belongs to the previous training, so it is not treated as a result
-   * of the current one - the last time stays visible only in the "Previous" column.
+   * True once the time of this set was typed or measured in this session. A set added from a past
+   * workout starts with the previous time copied into durationSeconds - that value is shown (like
+   * the carried over kg x reps), but the counter must not continue from it.
    */
-  hasOwnDuration(set: WorkoutSet): boolean {
-    if (set.durationSeconds == null) {
-      return false;
-    }
-    if (set.isCompleted) {
-      return true;
-    }
-    if (set.id != null && this.measuredDurationSetIds().has(set.id)) {
-      return true;
-    }
-    return set.durationSeconds !== set.prevDurationSeconds;
+  private wasDurationMeasured(set: WorkoutSet): boolean {
+    return set.id != null && this.measuredDurationSetIds().has(set.id);
   }
 
-  /** The time recorded for this training, or null when nothing has been measured yet. */
-  ownDurationSeconds(set: WorkoutSet): number | null {
-    return this.hasOwnDuration(set) ? set.durationSeconds ?? null : null;
-  }
-
-  /** Value shown in the Time cell: the live counter when running, otherwise the recorded time. */
+  /** Value shown in the Time cell: the live counter when running, otherwise the stored time. */
   displaySetDuration(set: WorkoutSet): string {
     const running = this.runningSeconds(set);
-    if (running != null) {
-      return this.formatSetDuration(running);
-    }
-    const own = this.ownDurationSeconds(set);
-    if (own == null) {
-      return this.isReadOnly() ? '—' : '0:00';
-    }
-    return this.formatSetDuration(own);
+    return this.formatSetDuration(running ?? set.durationSeconds);
   }
 
-  /** Prefill for the inline editor - never the time carried over from the previous workout. */
+  /** Prefill for the inline editor. */
   durationInputValue(set: WorkoutSet): number | string {
-    return this.ownDurationSeconds(set) ?? '';
+    return set.durationSeconds ?? '';
   }
 
   isTimerRunning(set: WorkoutSet): boolean {
@@ -209,7 +201,8 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     this.activeTimer.set({
       setId: set.id,
       startedAtMs: Date.now(),
-      baseSeconds: this.ownDurationSeconds(set) ?? 0,
+      // Resume a paused measurement, but never continue from the previous workout's time.
+      baseSeconds: this.wasDurationMeasured(set) ? set.durationSeconds ?? 0 : 0,
     });
   }
 
@@ -225,7 +218,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   }
 
   canResetTimer(set: WorkoutSet): boolean {
-    return !this.isTimerRunning(set) && (this.ownDurationSeconds(set) ?? 0) > 0;
+    return !this.isTimerRunning(set) && (set.durationSeconds ?? 0) > 0;
   }
 
   /** Stops the running stopwatch (if any) and persists the elapsed time. */
@@ -552,11 +545,137 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  // --- Rest time per exercise -------------------------------------------------------------
+
+  /** Rest time as m:ss, falling back to the 90s the API uses when nothing is stored. */
+  formatRestTimer(seconds?: number | null): string {
+    return this.formatSetDuration(seconds ?? DEFAULT_REST_SECONDS);
+  }
+
+  isEditingRestTimer(exercise: WorkoutExercise): boolean {
+    return this.editingRestExerciseId() === this.getExerciseKey(exercise);
+  }
+
+  isSavingRestTimer(exercise: WorkoutExercise): boolean {
+    return this.savingRestExerciseId() === this.getExerciseKey(exercise);
+  }
+
+  startEditRestTimer(exercise: WorkoutExercise): void {
+    if (this.isReadOnly()) return;
+    this.restTimerInput = String(exercise.restTimerSeconds ?? DEFAULT_REST_SECONDS);
+    this.editingRestExerciseId.set(this.getExerciseKey(exercise));
+  }
+
+  cancelEditRestTimer(): void {
+    this.editingRestExerciseId.set(null);
+    this.restTimerInput = '';
+  }
+
+  /**
+   * Saves the rest time of this exercise. The API copies the value into the next workout that uses
+   * the same exercise, so changing it once is enough.
+   */
+  saveRestTimer(exercise: WorkoutExercise, rawValue: string | number): void {
+    if (this.isReadOnly()) return;
+
+    const seconds = this.parseDurationInput(rawValue);
+    if (seconds === null || seconds < 0 || seconds === exercise.restTimerSeconds) {
+      this.cancelEditRestTimer();
+      return;
+    }
+
+    if (!exercise.id) {
+      this.updateLocalExerciseRestTimer(exercise, seconds);
+      this.cancelEditRestTimer();
+      return;
+    }
+
+    this.savingRestExerciseId.set(this.getExerciseKey(exercise));
+    this.workoutService.saveExerciseRestTimer(exercise.id, seconds).subscribe({
+      next: (updatedExercise) => {
+        this.updateLocalExerciseRestTimer(exercise, updatedExercise?.restTimerSeconds ?? seconds);
+        this.savingRestExerciseId.set(null);
+        this.cancelEditRestTimer();
+      },
+      error: (err) => {
+        console.error('Error saving rest timer:', err);
+        this.notificationService.showError('Failed to save the rest time. Please try again.');
+        this.savingRestExerciseId.set(null);
+        this.cancelEditRestTimer();
+      },
+    });
+  }
+
+  private updateLocalExerciseRestTimer(exercise: WorkoutExercise, seconds: number): void {
+    this.workout.update((w) => {
+      if (!w || !w.exercises) return w;
+      const key = this.getExerciseKey(exercise);
+      const updatedExercises = w.exercises.map((ex) =>
+        this.getExerciseKey(ex) === key ? { ...ex, restTimerSeconds: seconds } : ex
+      );
+      return { ...w, exercises: updatedExercises };
+    });
+    exercise.restTimerSeconds = seconds;
+  }
+
+  // --- Rest countdown ---------------------------------------------------------------------
+
+  isResting(exercise: WorkoutExercise): boolean {
+    const countdown = this.restCountdown();
+    return countdown != null && countdown.exerciseKey === this.getExerciseKey(exercise);
+  }
+
+  /** Seconds left of the rest period, or null when this exercise is not resting. */
+  restRemainingSeconds(exercise: WorkoutExercise): number | null {
+    const countdown = this.restCountdown();
+    if (countdown == null || countdown.exerciseKey !== this.getExerciseKey(exercise)) {
+      return null;
+    }
+    return Math.max(0, Math.ceil((countdown.endsAtMs - this.currentTime().getTime()) / 1000));
+  }
+
+  /** Starts counting the break after a set has been checked off. */
+  startRestCountdown(exercise: WorkoutExercise): void {
+    const seconds = exercise.restTimerSeconds ?? 0;
+    if (this.isReadOnly() || seconds <= 0) {
+      return;
+    }
+
+    this.clearRestCountdownTimeout();
+    this.startDurationTimer();
+    this.restCountdown.set({
+      exerciseKey: this.getExerciseKey(exercise),
+      endsAtMs: Date.now() + seconds * 1000,
+      totalSeconds: seconds,
+    });
+
+    const exerciseName = exercise.exercise?.name ?? 'exercise';
+    this.restCountdownTimeout = setTimeout(() => {
+      this.restCountdown.set(null);
+      this.restCountdownTimeout = null;
+      this.notificationService.showSuccess(`Rest is over - ${exerciseName}, next set!`);
+    }, seconds * 1000);
+  }
+
+  /** Ends the break early. */
+  skipRest(): void {
+    this.clearRestCountdownTimeout();
+    this.restCountdown.set(null);
+  }
+
+  private clearRestCountdownTimeout(): void {
+    if (this.restCountdownTimeout != null) {
+      clearTimeout(this.restCountdownTimeout);
+      this.restCountdownTimeout = null;
+    }
+  }
+
   completeTraining(): void {
     const w = this.workout();
     if (!w || !w.id || this.isCompletingTraining()) return;
 
     this.stopTimer();
+    this.skipRest();
     this.isCompletingTraining.set(true);
     this.isEditingCompleted.set(false);
     this.workoutService.completeWorkout(w.id).subscribe({
@@ -787,13 +906,26 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  completeSet(set: WorkoutSet): void {
+  completeSet(set: WorkoutSet, exercise?: WorkoutExercise): void {
     if (this.isReadOnly() || !set.id) return;
     if (this.savingSetId() === set.id) return;
 
     const previousStatus = set.isCompleted;
     const newStatus = !previousStatus;
+
+    // Finishing a set also finishes its stopwatch, so the measured time is stored.
+    if (newStatus && this.isTimerRunning(set)) {
+      this.stopTimer();
+    }
     set.isCompleted = newStatus;
+
+    if (exercise) {
+      if (newStatus) {
+        this.startRestCountdown(exercise);
+      } else if (this.isResting(exercise)) {
+        this.skipRest();
+      }
+    }
 
     this.sendSaveSet(
       {

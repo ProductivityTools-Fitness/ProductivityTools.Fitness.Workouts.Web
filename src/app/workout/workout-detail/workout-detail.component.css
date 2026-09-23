@@ -342,6 +342,69 @@
   flex-shrink: 0;
 }
 
+.rest-timer-editable {
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.rest-timer-editable:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.rest-timer.resting {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #15803d;
+  background: #f0fdf4;
+  border-color: #16a34a;
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+.btn-skip-rest {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #15803d;
+  background: #fff;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+  padding: 0.05rem 0.3rem;
+  cursor: pointer;
+}
+
+.btn-skip-rest:hover {
+  background: #dcfce7;
+}
+
+.rest-timer-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.rest-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.rest-timer-input {
+  width: 3.25rem;
+  padding: 0.2rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  border: 2px solid #2563eb;
+  border-radius: 6px;
+  outline: none;
+  color: #0f172a;
+}
+
 .exercise-notes-display {
   display: inline-flex;
   align-items: center;
@@ -539,6 +602,11 @@
   gap: 0.3rem;
 }
 
+/* Fixed widths keep the value and the buttons aligned across all rows. */
+.duration-cell .cell-display {
+  min-width: 3.1rem;
+}
+
 .cell-display.timing {
   border-color: #16a34a;
   background-color: #f0fdf4;
@@ -549,6 +617,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
+}
+
+.btn-timer.slot-hidden {
+  visibility: hidden;
 }
 
 .btn-timer {

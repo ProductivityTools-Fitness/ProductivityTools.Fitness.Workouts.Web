@@ -1223,14 +1223,12 @@ describe('WorkoutDetailComponent', () => {
       });
     }
 
-    it('should not show the time carried over from the previous workout', () => {
+    it('should show the time carried over from the previous workout', () => {
       const set = carriedOverSet();
       setUpWorkout(set);
 
-      expect(component.hasOwnDuration(set)).toBe(false);
-      expect(component.displaySetDuration(set)).toBe('0:00');
-      expect(component.durationInputValue(set)).toBe('');
-      // The last time is still available in the Previous column.
+      expect(component.displaySetDuration(set)).toBe('1:15');
+      expect(component.durationInputValue(set)).toBe(75);
       expect(component.formatPrevious(set, plankExercise)).toBe('1:15');
     });
 
@@ -1238,7 +1236,6 @@ describe('WorkoutDetailComponent', () => {
       const set = { ...carriedOverSet(), durationSeconds: 95 };
       setUpWorkout(set);
 
-      expect(component.hasOwnDuration(set)).toBe(true);
       expect(component.displaySetDuration(set)).toBe('1:35');
     });
 
@@ -1257,6 +1254,7 @@ describe('WorkoutDetailComponent', () => {
         component.toggleTimer(set);
         expect(component.isTimerRunning(set)).toBe(true);
         component.currentTime.set(new Date('2026-09-07T12:00:00Z'));
+        // The counter measures this workout, so it starts from zero and not from the shown 1:15.
         expect(component.displaySetDuration(set)).toBe('0:00');
 
         vi.setSystemTime(new Date('2026-09-07T12:00:20Z'));
@@ -1305,7 +1303,108 @@ describe('WorkoutDetailComponent', () => {
       expect(compiled.querySelector<HTMLButtonElement>('.col-duration .btn-timer')).toBeTruthy();
       expect(
         compiled.querySelector<HTMLElement>('.col-duration .cell-val')?.textContent?.trim()
-      ).toBe('0:00');
+      ).toBe('1:15');
+    });
+  });
+
+  describe('Rest time per exercise', () => {
+    const plankItem = () => ({
+      id: 900,
+      orderIndex: 1,
+      exercise: { id: 58, name: 'front plank', isSystem: true, trackingType: 'DURATION' as const },
+      restTimerSeconds: 90,
+      sets: [{ id: 901, setNumber: 1, weightKg: 0, reps: 0, isCompleted: false }],
+    });
+
+    function setUpWorkout(item: ReturnType<typeof plankItem>): void {
+      component.workout.set({
+        id: 900,
+        title: 'Core',
+        status: 'IN_PROGRESS',
+        exercises: [item],
+      });
+    }
+
+    it('should save a new rest time for the exercise', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const item = plankItem();
+      setUpWorkout(item);
+
+      const saveSpy = vi
+        .spyOn(workoutService, 'saveExerciseRestTimer')
+        .mockReturnValue(of({ ...item, restTimerSeconds: 60 }));
+
+      component.startEditRestTimer(item);
+      expect(component.restTimerInput).toBe('90');
+
+      component.saveRestTimer(item, '60');
+
+      expect(saveSpy).toHaveBeenCalledWith(900, 60);
+      expect(component.workout()?.exercises?.[0].restTimerSeconds).toBe(60);
+      expect(component.isEditingRestTimer(item)).toBe(false);
+    });
+
+    it('should accept clock notation for the rest time', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const item = plankItem();
+      setUpWorkout(item);
+
+      const saveSpy = vi
+        .spyOn(workoutService, 'saveExerciseRestTimer')
+        .mockReturnValue(of({ ...item, restTimerSeconds: 150 }));
+
+      component.saveRestTimer(item, '2:30');
+
+      expect(saveSpy).toHaveBeenCalledWith(900, 150);
+    });
+
+    it('should start the rest countdown when a set is completed', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const item = { ...plankItem(), restTimerSeconds: 60 };
+      setUpWorkout(item);
+      const set = item.sets[0];
+
+      vi.spyOn(workoutService, 'saveSet').mockReturnValue(of({ ...set, isCompleted: true }));
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-07T12:00:00Z'));
+      try {
+        component.completeSet(set, item);
+        component.currentTime.set(new Date('2026-09-07T12:00:00Z'));
+
+        expect(component.isResting(item)).toBe(true);
+        expect(component.restRemainingSeconds(item)).toBe(60);
+
+        component.currentTime.set(new Date('2026-09-07T12:00:45Z'));
+        expect(component.restRemainingSeconds(item)).toBe(15);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should stop the countdown when the rest is skipped', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const item = { ...plankItem(), restTimerSeconds: 60 };
+      setUpWorkout(item);
+      const set = item.sets[0];
+
+      vi.spyOn(workoutService, 'saveSet').mockReturnValue(of({ ...set, isCompleted: true }));
+
+      component.completeSet(set, item);
+      expect(component.isResting(item)).toBe(true);
+
+      component.skipRest();
+      expect(component.isResting(item)).toBe(false);
+      expect(component.restRemainingSeconds(item)).toBeNull();
+    });
+
+    it('should render the rest badge as a clickable button', () => {
+      setUpWorkout(plankItem());
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const badge = compiled.querySelector<HTMLButtonElement>('.rest-timer-editable');
+      expect(badge?.textContent?.trim()).toBe('Rest: 1:30');
     });
   });
 
