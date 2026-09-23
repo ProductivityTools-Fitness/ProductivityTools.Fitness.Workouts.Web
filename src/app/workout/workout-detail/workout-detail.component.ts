@@ -50,6 +50,11 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   showDeleteWorkoutModal = signal<boolean>(false);
   isDeletingWorkout = signal<boolean>(false);
 
+  /** The stopwatch that is currently counting, at most one at a time. */
+  activeTimer = signal<{ setId: number; startedAtMs: number; baseSeconds: number } | null>(null);
+  /** Sets whose time was typed or measured during this session. */
+  private measuredDurationSetIds = signal<ReadonlySet<number>>(new Set<number>());
+
   ngOnInit(): void {
     this.startDurationTimer();
     this.route.queryParamMap.subscribe((params) => {
@@ -66,6 +71,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopTimer();
     this.stopDurationTimer();
   }
 
@@ -130,6 +136,160 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
       return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
     return `${minutes}:${String(secs).padStart(2, '0')}`;
+  }
+
+  /**
+   * A set added from a past workout arrives with the previous time already copied into
+   * durationSeconds. That value belongs to the previous training, so it is not treated as a result
+   * of the current one - the last time stays visible only in the "Previous" column.
+   */
+  hasOwnDuration(set: WorkoutSet): boolean {
+    if (set.durationSeconds == null) {
+      return false;
+    }
+    if (set.isCompleted) {
+      return true;
+    }
+    if (set.id != null && this.measuredDurationSetIds().has(set.id)) {
+      return true;
+    }
+    return set.durationSeconds !== set.prevDurationSeconds;
+  }
+
+  /** The time recorded for this training, or null when nothing has been measured yet. */
+  ownDurationSeconds(set: WorkoutSet): number | null {
+    return this.hasOwnDuration(set) ? set.durationSeconds ?? null : null;
+  }
+
+  /** Value shown in the Time cell: the live counter when running, otherwise the recorded time. */
+  displaySetDuration(set: WorkoutSet): string {
+    const running = this.runningSeconds(set);
+    if (running != null) {
+      return this.formatSetDuration(running);
+    }
+    const own = this.ownDurationSeconds(set);
+    if (own == null) {
+      return this.isReadOnly() ? '—' : '0:00';
+    }
+    return this.formatSetDuration(own);
+  }
+
+  /** Prefill for the inline editor - never the time carried over from the previous workout. */
+  durationInputValue(set: WorkoutSet): number | string {
+    return this.ownDurationSeconds(set) ?? '';
+  }
+
+  isTimerRunning(set: WorkoutSet): boolean {
+    const timer = this.activeTimer();
+    return timer != null && set.id != null && timer.setId === set.id;
+  }
+
+  /** Seconds counted so far for a running stopwatch, null when this set is not being timed. */
+  runningSeconds(set: WorkoutSet): number | null {
+    const timer = this.activeTimer();
+    if (timer == null || set.id == null || timer.setId !== set.id) {
+      return null;
+    }
+    const elapsed = Math.max(0, Math.floor((this.currentTime().getTime() - timer.startedAtMs) / 1000));
+    return timer.baseSeconds + elapsed;
+  }
+
+  /** Starts the counter for a set, or stops it and saves the measured time. */
+  toggleTimer(set: WorkoutSet): void {
+    if (this.isReadOnly() || set.id == null) {
+      return;
+    }
+    if (this.isTimerRunning(set)) {
+      this.stopTimer();
+      return;
+    }
+    // Only one stopwatch runs at a time; the previous one is saved before switching.
+    this.stopTimer();
+    this.startDurationTimer();
+    this.activeTimer.set({
+      setId: set.id,
+      startedAtMs: Date.now(),
+      baseSeconds: this.ownDurationSeconds(set) ?? 0,
+    });
+  }
+
+  /** Clears the measured time so the counter starts from zero again. */
+  resetTimer(set: WorkoutSet): void {
+    if (this.isReadOnly() || set.id == null) {
+      return;
+    }
+    if (this.isTimerRunning(set)) {
+      this.activeTimer.set(null);
+    }
+    this.applyDuration(set, 0);
+  }
+
+  canResetTimer(set: WorkoutSet): boolean {
+    return !this.isTimerRunning(set) && (this.ownDurationSeconds(set) ?? 0) > 0;
+  }
+
+  /** Stops the running stopwatch (if any) and persists the elapsed time. */
+  private stopTimer(): void {
+    const timer = this.activeTimer();
+    if (timer == null) {
+      return;
+    }
+    const elapsed = Math.max(0, Math.floor((Date.now() - timer.startedAtMs) / 1000));
+    const seconds = timer.baseSeconds + elapsed;
+    this.activeTimer.set(null);
+
+    const set = this.findSetById(timer.setId);
+    if (set) {
+      this.applyDuration(set, seconds);
+    }
+  }
+
+  private findSetById(setId: number): WorkoutSet | null {
+    const w = this.workout();
+    if (!w || !w.exercises) {
+      return null;
+    }
+    for (const exercise of w.exercises) {
+      for (const set of exercise.sets || []) {
+        if (set.id === setId) {
+          return set;
+        }
+      }
+    }
+    return null;
+  }
+
+  private markDurationMeasured(setId: number): void {
+    this.measuredDurationSetIds.update((ids) => {
+      const next = new Set(ids);
+      next.add(setId);
+      return next;
+    });
+  }
+
+  /** Stores a time for the set, keeping the UI responsive with an optimistic update. */
+  private applyDuration(set: WorkoutSet, seconds: number): void {
+    if (set.id == null) {
+      return;
+    }
+    this.markDurationMeasured(set.id);
+    if (seconds === set.durationSeconds) {
+      return;
+    }
+
+    const previousDuration = set.durationSeconds;
+    set.durationSeconds = seconds;
+
+    this.sendSaveSet(
+      {
+        id: set.id,
+        durationSeconds: seconds,
+        status: set.isCompleted,
+      },
+      () => {
+        set.durationSeconds = previousDuration;
+      }
+    );
   }
 
   formatSetDistance(meters?: number | null): string {
@@ -396,6 +556,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     const w = this.workout();
     if (!w || !w.id || this.isCompletingTraining()) return;
 
+    this.stopTimer();
     this.isCompletingTraining.set(true);
     this.isEditingCompleted.set(false);
     this.workoutService.completeWorkout(w.id).subscribe({
@@ -556,23 +717,11 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     this.stopEdit();
 
     const seconds = this.parseDurationInput(rawValue);
-    if (seconds === null || seconds === set.durationSeconds) {
+    if (seconds === null) {
       return;
     }
 
-    const previousDuration = set.durationSeconds;
-    set.durationSeconds = seconds;
-
-    this.sendSaveSet(
-      {
-        id: set.id!,
-        durationSeconds: seconds,
-        status: set.isCompleted,
-      },
-      () => {
-        set.durationSeconds = previousDuration;
-      }
-    );
+    this.applyDuration(set, seconds);
   }
 
   saveDistance(set: WorkoutSet, rawValue: string | number): void {

@@ -531,6 +531,70 @@
   text-align: center;
 }
 
+/* Stopwatch shown in the Time column */
+.duration-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.cell-display.timing {
+  border-color: #16a34a;
+  background-color: #f0fdf4;
+  color: #15803d;
+}
+
+.timer-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.btn-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #16a34a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-timer:hover {
+  border-color: #16a34a;
+  background-color: #f0fdf4;
+}
+
+.btn-timer.running {
+  border-color: #dc2626;
+  background-color: #fef2f2;
+  color: #dc2626;
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+.btn-timer-reset {
+  color: #64748b;
+}
+
+.btn-timer-reset:hover {
+  border-color: #64748b;
+  background-color: #f1f5f9;
+}
+
+@keyframes timer-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 
 .inline-num-input {
   width: 2.75rem;

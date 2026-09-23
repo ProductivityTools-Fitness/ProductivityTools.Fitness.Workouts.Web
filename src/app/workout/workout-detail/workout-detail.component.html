@@ -239,7 +239,7 @@
                               </td>
                             }
                             @if (tracksDuration(item)) {
-                              <td class="col-duration" [class.col-editable]="!isReadOnly()" (click)="!isReadOnly() && startEdit(set, 'duration')">
+                              <td class="col-duration" [class.col-editable]="!isReadOnly() && !isTimerRunning(set)" (click)="!isReadOnly() && !isTimerRunning(set) && startEdit(set, 'duration')">
                                 @if (!isReadOnly() && isEditing(set.id, 'duration')) {
                                   <input
                                     #durationInput
@@ -248,7 +248,7 @@
                                     inputmode="numeric"
                                     class="inline-num-input"
                                     placeholder="1:30"
-                                    [value]="set.durationSeconds ?? ''"
+                                    [value]="durationInputValue(set)"
                                     (click)="$event.stopPropagation()"
                                     (change)="saveDuration(set, durationInput.value)"
                                     (blur)="saveDuration(set, durationInput.value)"
@@ -256,8 +256,35 @@
                                     (keydown.escape)="stopEdit()"
                                   />
                                 } @else {
-                                  <div class="cell-display" [class.readonly]="isReadOnly()" [title]="isReadOnly() ? '' : 'Click to edit time (seconds or m:ss)'">
-                                    <span class="cell-val">{{ formatSetDuration(set.durationSeconds) }}</span>
+                                  <div class="duration-cell">
+                                    <div class="cell-display" [class.readonly]="isReadOnly()" [class.timing]="isTimerRunning(set)" [title]="isReadOnly() ? '' : 'Click to edit time (seconds or m:ss)'">
+                                      <span class="cell-val">{{ displaySetDuration(set) }}</span>
+                                    </div>
+                                    @if (!isReadOnly()) {
+                                      <div class="timer-controls">
+                                        <button
+                                          type="button"
+                                          class="btn-timer"
+                                          [class.running]="isTimerRunning(set)"
+                                          (click)="toggleTimer(set); $event.stopPropagation()"
+                                          [title]="isTimerRunning(set) ? 'Stop counter' : 'Start counter'"
+                                          [attr.aria-label]="isTimerRunning(set) ? 'Stop counter' : 'Start counter'"
+                                        >
+                                          {{ isTimerRunning(set) ? '⏹' : '▶' }}
+                                        </button>
+                                        @if (canResetTimer(set)) {
+                                          <button
+                                            type="button"
+                                            class="btn-timer btn-timer-reset"
+                                            (click)="resetTimer(set); $event.stopPropagation()"
+                                            title="Reset counter"
+                                            aria-label="Reset counter"
+                                          >
+                                            ↺
+                                          </button>
+                                        }
+                                      </div>
+                                    }
                                   </div>
                                 }
                               </td>

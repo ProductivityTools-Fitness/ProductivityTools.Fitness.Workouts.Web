@@ -1196,6 +1196,119 @@ describe('WorkoutDetailComponent', () => {
     });
   });
 
+  describe('Set counter for timed exercises', () => {
+    const plankExercise = {
+      orderIndex: 1,
+      exercise: { id: 58, name: 'front plank', isSystem: true, trackingType: 'DURATION' as const },
+      sets: [],
+    };
+
+    /** A set created from a past workout: the last time is copied into durationSeconds. */
+    const carriedOverSet = () => ({
+      id: 401,
+      setNumber: 1,
+      weightKg: 0,
+      reps: 0,
+      isCompleted: false,
+      durationSeconds: 75,
+      prevDurationSeconds: 75,
+    });
+
+    function setUpWorkout(set: ReturnType<typeof carriedOverSet>): void {
+      component.workout.set({
+        id: 400,
+        title: 'Core',
+        status: 'IN_PROGRESS',
+        exercises: [{ ...plankExercise, sets: [set] }],
+      });
+    }
+
+    it('should not show the time carried over from the previous workout', () => {
+      const set = carriedOverSet();
+      setUpWorkout(set);
+
+      expect(component.hasOwnDuration(set)).toBe(false);
+      expect(component.displaySetDuration(set)).toBe('0:00');
+      expect(component.durationInputValue(set)).toBe('');
+      // The last time is still available in the Previous column.
+      expect(component.formatPrevious(set, plankExercise)).toBe('1:15');
+    });
+
+    it('should show a time that was recorded in this workout', () => {
+      const set = { ...carriedOverSet(), durationSeconds: 95 };
+      setUpWorkout(set);
+
+      expect(component.hasOwnDuration(set)).toBe(true);
+      expect(component.displaySetDuration(set)).toBe('1:35');
+    });
+
+    it('should count up while the counter runs and save the time when stopped', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const set = carriedOverSet();
+      setUpWorkout(set);
+
+      const saveSetSpy = vi
+        .spyOn(workoutService, 'saveSet')
+        .mockReturnValue(of({ ...set, durationSeconds: 20 }));
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-07T12:00:00Z'));
+      try {
+        component.toggleTimer(set);
+        expect(component.isTimerRunning(set)).toBe(true);
+        component.currentTime.set(new Date('2026-09-07T12:00:00Z'));
+        expect(component.displaySetDuration(set)).toBe('0:00');
+
+        vi.setSystemTime(new Date('2026-09-07T12:00:20Z'));
+        component.currentTime.set(new Date('2026-09-07T12:00:20Z'));
+        expect(component.displaySetDuration(set)).toBe('0:20');
+
+        component.toggleTimer(set);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(component.isTimerRunning(set)).toBe(false);
+      expect(saveSetSpy).toHaveBeenCalledWith({
+        id: 401,
+        durationSeconds: 20,
+        status: false,
+      });
+      expect(component.displaySetDuration(set)).toBe('0:20');
+    });
+
+    it('should reset the counter back to zero', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const set = { ...carriedOverSet(), durationSeconds: 42 };
+      setUpWorkout(set);
+
+      const saveSetSpy = vi
+        .spyOn(workoutService, 'saveSet')
+        .mockReturnValue(of({ ...set, durationSeconds: 0 }));
+
+      expect(component.canResetTimer(set)).toBe(true);
+      component.resetTimer(set);
+
+      expect(saveSetSpy).toHaveBeenCalledWith({
+        id: 401,
+        durationSeconds: 0,
+        status: false,
+      });
+      expect(component.displaySetDuration(set)).toBe('0:00');
+    });
+
+    it('should render the counter button in the time column', () => {
+      setUpWorkout(carriedOverSet());
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      expect(compiled.querySelector<HTMLButtonElement>('.col-duration .btn-timer')).toBeTruthy();
+      expect(
+        compiled.querySelector<HTMLElement>('.col-duration .cell-val')?.textContent?.trim()
+      ).toBe('0:00');
+    });
+  });
+
   describe('Exercise icons in workout detail', () => {
     it('should render exercise image icon when gifUrl or iconUrl is present', () => {
       const workoutWithImages: Workout = {
