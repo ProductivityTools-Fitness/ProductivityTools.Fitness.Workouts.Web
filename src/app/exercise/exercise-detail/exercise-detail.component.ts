@@ -18,6 +18,7 @@ export class ExerciseDetailComponent implements OnInit {
   workoutId = signal<number | null>(null);
   exercise = signal<Exercise | null>(null);
   isLoading = signal<boolean>(false);
+  isSavingSettings = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -50,6 +51,25 @@ export class ExerciseDetailComponent implements OnInit {
         console.error('Error loading exercise details:', err);
         this.errorMessage.set('Failed to load exercise details.');
         this.isLoading.set(false);
+      },
+    });
+  }
+
+  toggleWakeLockSentinel(): void {
+    const current = this.exercise();
+    if (!current || this.isSavingSettings()) return;
+
+    const nextValue = !Boolean(current.wakeLockSentinel);
+    this.isSavingSettings.set(true);
+
+    this.exerciseService.updateExerciseSettings(current.id, { wakeLockSentinel: nextValue }).subscribe({
+      next: (updated) => {
+        this.exercise.set(updated);
+        this.isSavingSettings.set(false);
+      },
+      error: (err) => {
+        console.error('Error updating exercise settings:', err);
+        this.isSavingSettings.set(false);
       },
     });
   }

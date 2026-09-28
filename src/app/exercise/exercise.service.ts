@@ -17,6 +17,10 @@ export class ExerciseService {
   getExerciseById(id: number): Observable<Exercise> {
     return this.http.get<Exercise>(`${environment.apiUrl}/exercise/${id}`);
   }
+
+  updateExerciseSettings(id: number, settings: { wakeLockSentinel: boolean }): Observable<Exercise> {
+    return this.http.post<Exercise>(`${environment.apiUrl}/exercise/${id}/settings`, settings);
+  }
 }
 
 

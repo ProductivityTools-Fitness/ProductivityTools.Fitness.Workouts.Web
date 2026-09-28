@@ -364,6 +364,18 @@
   animation: timer-pulse 1s ease-in-out infinite;
 }
 
+.wakelock-badge {
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.wakelock-badge.wakelock-active {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
 .btn-skip-rest {
   font-size: 0.65rem;
   font-weight: 700;

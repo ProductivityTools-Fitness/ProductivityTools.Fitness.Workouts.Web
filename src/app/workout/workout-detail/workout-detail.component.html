@@ -218,6 +218,22 @@
                   } @else if (item.restTimerSeconds) {
                     <span class="rest-timer">Rest: {{ formatRestTimer(item.restTimerSeconds) }}</span>
                   }
+                  @if (!isReadOnly()) {
+                    <button
+                      type="button"
+                      class="rest-timer wakelock-badge"
+                      [class.wakelock-active]="item.exercise.wakeLockSentinel"
+                      [disabled]="isSavingWakeLock(item)"
+                      (click)="toggleExerciseWakeLock(item)"
+                      title="WakeLockSentinel — click to toggle keeping the phone screen awake for this exercise"
+                    >
+                      {{ item.exercise.wakeLockSentinel ? '🔆 WakeLock' : '🌙 WakeLock' }}
+                    </button>
+                  } @else if (item.exercise.wakeLockSentinel) {
+                    <span class="rest-timer wakelock-badge wakelock-active" title="WakeLockSentinel enabled">
+                      🔆 WakeLock
+                    </span>
+                  }
                 </div>
 
                 @if (item.sets && item.sets.length > 0) {

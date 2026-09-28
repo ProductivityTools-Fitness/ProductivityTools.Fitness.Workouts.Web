@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { WorkoutService, SaveSetRequest } from '../workout.service';
 import { Workout, WorkoutExercise, WorkoutSet } from '../models/workout';
 import { TrackingType } from '../../exercise/models/exercise';
+import { ExerciseService } from '../../exercise/exercise.service';
 import { NotificationService } from '../../notification/notification.service';
 
 /** An editable cell of a set row. */
@@ -24,6 +25,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workoutService = inject(WorkoutService);
+  private readonly exerciseService = inject(ExerciseService);
   private readonly notificationService = inject(NotificationService);
 
   workoutId = signal<number | null>(null);
@@ -67,8 +69,21 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   restCountdown = signal<{ exerciseKey: number; endsAtMs: number; totalSeconds: number } | null>(null);
   private restCountdownTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  /** Active Screen Wake Lock sentinel keeping the mobile screen on. */
+  savingWakeLockExerciseId = signal<number | null>(null);
+  isWakeLockActive = signal<boolean>(false);
+  private wakeLockSentinel: WakeLockSentinel | null = null;
+  private readonly onVisibilityChange = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      void this.syncWakeLock();
+    }
+  };
+
   ngOnInit(): void {
     this.startDurationTimer();
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.onVisibilityChange);
+    }
     this.route.queryParamMap.subscribe((params) => {
       const idParam = params.get('workoutId');
       if (idParam) {
@@ -86,12 +101,17 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     this.stopTimer();
     this.stopDurationTimer();
     this.clearRestCountdownTimeout();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    }
+    void this.releaseWakeLock();
   }
 
   startDurationTimer(): void {
     if (this.timerInterval != null) return;
     this.timerInterval = setInterval(() => {
       this.currentTime.set(new Date());
+      void this.syncWakeLock();
     }, 1000);
   }
 
@@ -670,12 +690,113 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  isSavingWakeLock(exercise: WorkoutExercise): boolean {
+    const id = exercise.exercise?.id;
+    return id != null && this.savingWakeLockExerciseId() === id;
+  }
+
+  toggleExerciseWakeLock(item: WorkoutExercise): void {
+    const ex = item.exercise;
+    if (!ex || ex.id == null || this.isSavingWakeLock(item)) return;
+
+    const nextValue = !Boolean(ex.wakeLockSentinel);
+    this.savingWakeLockExerciseId.set(ex.id);
+
+    this.exerciseService.updateExerciseSettings(ex.id, { wakeLockSentinel: nextValue }).subscribe({
+      next: (updatedEx) => {
+        this.workout.update((w) => {
+          if (!w || !w.exercises) return w;
+          return {
+            ...w,
+            exercises: w.exercises.map((we) =>
+              we.exercise?.id === ex.id
+                ? { ...we, exercise: { ...we.exercise, wakeLockSentinel: updatedEx.wakeLockSentinel } }
+                : we
+            ),
+          };
+        });
+        this.savingWakeLockExerciseId.set(null);
+        void this.syncWakeLock();
+      },
+      error: (err) => {
+        console.error('Error updating exercise WakeLockSentinel setting:', err);
+        this.savingWakeLockExerciseId.set(null);
+      },
+    });
+  }
+
+  private shouldKeepScreenAwake(): boolean {
+    if (this.isReadOnly()) return false;
+    const w = this.workout();
+    if (!w || !w.exercises) return false;
+
+    const timer = this.activeTimer();
+    for (const we of w.exercises) {
+      if (!we.exercise?.wakeLockSentinel) continue;
+      const sets = we.sets ?? [];
+      if (timer && sets.some((s) => s.id === timer.setId)) {
+        return true;
+      }
+      if (sets.length === 0 || sets.some((s) => !s.isCompleted)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async syncWakeLock(): Promise<void> {
+    const wantLock = this.shouldKeepScreenAwake();
+    if (!wantLock) {
+      await this.releaseWakeLock();
+      return;
+    }
+    if (this.wakeLockSentinel && !this.wakeLockSentinel.released) {
+      this.isWakeLockActive.set(true);
+      return;
+    }
+    if (
+      typeof navigator === 'undefined' ||
+      !('wakeLock' in navigator) ||
+      typeof document === 'undefined' ||
+      document.visibilityState !== 'visible'
+    ) {
+      return;
+    }
+    try {
+      const sentinel = await navigator.wakeLock.request('screen');
+      this.wakeLockSentinel = sentinel;
+      this.isWakeLockActive.set(true);
+      sentinel.addEventListener('release', () => {
+        if (this.wakeLockSentinel === sentinel) {
+          this.wakeLockSentinel = null;
+          this.isWakeLockActive.set(false);
+        }
+      });
+    } catch {
+      // Browser may reject if battery saver is on or page is hidden; ignore silently.
+    }
+  }
+
+  async releaseWakeLock(): Promise<void> {
+    const sentinel = this.wakeLockSentinel;
+    this.wakeLockSentinel = null;
+    this.isWakeLockActive.set(false);
+    if (sentinel && !sentinel.released) {
+      try {
+        await sentinel.release();
+      } catch {
+        // Ignore release errors
+      }
+    }
+  }
+
   completeTraining(): void {
     const w = this.workout();
     if (!w || !w.id || this.isCompletingTraining()) return;
 
     this.stopTimer();
     this.skipRest();
+    void this.releaseWakeLock();
     this.isCompletingTraining.set(true);
     this.isEditingCompleted.set(false);
     this.workoutService.completeWorkout(w.id).subscribe({

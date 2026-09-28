@@ -96,6 +96,11 @@
                   {{ exercise.equipmentCategory }}
                 </span>
               }
+              @if (exercise.wakeLockSentinel) {
+                <span class="badge badge-wakelock" title="WakeLockSentinel: keeps the phone screen awake">
+                  🔆 WakeLockSentinel
+                </span>
+              }
             </div>
 
             <div class="card-actions">

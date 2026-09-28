@@ -64,6 +64,31 @@
               <span class="info-label">Equipment</span>
               <span class="info-value">{{ exercise()!.equipmentCategory || 'Bodyweight / None' }}</span>
             </div>
+            <div class="info-item">
+              <span class="info-label">WakeLockSentinel</span>
+              <span class="info-value">{{ exercise()!.wakeLockSentinel ? 'Enabled (🔆)' : 'Disabled' }}</span>
+            </div>
+          </div>
+
+          <div class="exercise-settings-section">
+            <h4>Exercise Settings:</h4>
+            <label class="setting-toggle-row">
+              <div class="setting-text">
+                <span class="setting-title">WakeLockSentinel — keep phone screen awake</span>
+                <span class="setting-desc">
+                  Keeps the phone screen on while performing this exercise during an active workout.
+                </span>
+              </div>
+              <button
+                type="button"
+                class="btn-wake-lock-toggle"
+                [class.active]="exercise()!.wakeLockSentinel"
+                [disabled]="isSavingSettings()"
+                (click)="toggleWakeLockSentinel()"
+              >
+                {{ isSavingSettings() ? 'Saving...' : (exercise()!.wakeLockSentinel ? '🔆 Enabled' : 'Disabled') }}
+              </button>
+            </label>
           </div>
 
           @if (getSecondaryMuscles(exercise()).length > 0) {

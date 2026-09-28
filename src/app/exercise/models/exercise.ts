@@ -27,6 +27,8 @@ export interface Exercise {
   imageFileName?: string | null;
   /** Absent on older payloads, which are all weight x reps. */
   trackingType?: TrackingType;
+  /** Whether the mobile screen should be kept awake (Screen Wake Lock API) for this exercise. */
+  wakeLockSentinel?: boolean;
   isSystem: boolean;
   createdAt?: string | Date;
 }
