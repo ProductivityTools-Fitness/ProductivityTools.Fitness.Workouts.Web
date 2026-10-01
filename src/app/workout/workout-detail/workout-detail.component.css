@@ -755,7 +755,8 @@
   text-align: center;
 }
 
-.btn-delete-set {
+.btn-delete-set,
+.btn-delete-exercise {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -768,19 +769,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.sets-table tr:hover .btn-delete-set {
+.sets-table tr:hover .btn-delete-set,
+.exercise-card:hover .btn-delete-exercise {
   opacity: 0.85;
 }
 
-.btn-delete-set:hover:not(:disabled) {
+.btn-delete-set:hover:not(:disabled),
+.btn-delete-exercise:hover:not(:disabled) {
   opacity: 1;
   background-color: #fee2e2;
   transform: scale(1.1);
 }
 
-.btn-delete-set:disabled {
+.btn-delete-set:disabled,
+.btn-delete-exercise:disabled {
   opacity: 0.25;
   cursor: not-allowed;
 }

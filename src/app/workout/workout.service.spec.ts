@@ -73,6 +73,17 @@ describe('WorkoutService', () => {
     req.flush(true);
   });
 
+  it('should post deleteExercise with DeleteExerciseRequest', () => {
+    service.deleteExercise(20).subscribe((res) => {
+      expect(res).toBe(true);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/workout/deleteExercise`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ workoutExerciseId: 20 });
+    req.flush(true);
+  });
+
   it('should post saveExerciseNotes with workoutExerciseId and notes', () => {
     const mockUpdatedExercise = {
       id: 25,

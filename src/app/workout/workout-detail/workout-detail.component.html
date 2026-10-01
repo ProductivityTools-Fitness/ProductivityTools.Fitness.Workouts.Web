@@ -229,6 +229,16 @@
                     >
                       {{ item.exercise.wakeLockSentinel ? '🔆 WakeLock' : '🌙 WakeLock' }}
                     </button>
+                    <button
+                      type="button"
+                      class="btn-delete-exercise"
+                      [disabled]="isDeletingExercise() === item.id"
+                      (click)="promptDeleteExercise(item)"
+                      title="Usuń ćwiczenie"
+                      aria-label="Usuń ćwiczenie"
+                    >
+                      🗑️
+                    </button>
                   } @else if (item.exercise.wakeLockSentinel) {
                     <span class="rest-timer wakelock-badge wakelock-active" title="WakeLockSentinel enabled">
                       🔆 WakeLock
@@ -554,6 +564,44 @@
             [disabled]="isDeletingWorkout()"
           >
             {{ isDeletingWorkout() ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (exerciseToDelete()) {
+    <div class="modal-backdrop" (click)="cancelDeleteExercise()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h4>Delete Exercise</h4>
+          <button
+            type="button"
+            class="btn-modal-close"
+            (click)="cancelDeleteExercise()"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete <strong>{{ exerciseToDelete()!.exercise.name }}</strong>?</p>
+          <p class="modal-delete-warning">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-modal-cancel"
+            (click)="cancelDeleteExercise()"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-modal-delete"
+            (click)="confirmDeleteExercise()"
+          >
+            Delete
           </button>
         </div>
       </div>

@@ -809,6 +809,7 @@ describe('WorkoutDetailComponent', () => {
       expect(compiled.querySelector('.col-actions')).toBeNull();
       expect(compiled.querySelector('.col-delete')).toBeNull();
       expect(compiled.querySelector('.btn-delete-set')).toBeNull();
+      expect(compiled.querySelector('.btn-delete-exercise')).toBeNull();
 
       // + Add set button should be hidden
       expect(compiled.querySelector('.btn-add-set')).toBeNull();
@@ -824,6 +825,7 @@ describe('WorkoutDetailComponent', () => {
       const saveSetSpy = vi.spyOn(workoutService, 'saveSet');
       const addSetSpy = vi.spyOn(workoutService, 'addSet');
       const deleteSetSpy = vi.spyOn(workoutService, 'deleteSet');
+      const deleteExerciseSpy = vi.spyOn(workoutService, 'deleteExercise');
 
       component.workout.set({ ...completedWorkoutWithData });
       fixture.detectChanges();
@@ -856,6 +858,12 @@ describe('WorkoutDetailComponent', () => {
       expect(component.setToDelete()).toBeNull();
       component.deleteSet(set);
       expect(deleteSetSpy).not.toHaveBeenCalled();
+
+      // Delete exercise should be blocked
+      component.promptDeleteExercise(exercise);
+      expect(component.exerciseToDelete()).toBeNull();
+      component.deleteExercise(exercise);
+      expect(deleteExerciseSpy).not.toHaveBeenCalled();
     });
 
     it('should unlock all fields when Edit Training is clicked and lock them when Done Editing is clicked', () => {
@@ -1507,7 +1515,106 @@ describe('WorkoutDetailComponent', () => {
       expect(iconLink?.title).toContain('Deadlift');
     });
   });
+
+  describe('Delete Exercise', () => {
+    it('should delete an exercise and renumber remaining exercises', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const ex1 = {
+        id: 50,
+        orderIndex: 1,
+        exercise: { id: 10, name: 'Squat', isSystem: true },
+        sets: [],
+      };
+      const ex2 = {
+        id: 51,
+        orderIndex: 2,
+        exercise: { id: 20, name: 'Bench Press', isSystem: true },
+        sets: [],
+      };
+      const initialWorkout: Workout = {
+        id: 1,
+        title: 'Trening #1',
+        exercises: [{ ...ex1 }, { ...ex2 }],
+      };
+      component.workout.set(initialWorkout);
+
+      const deleteExerciseSpy = vi.spyOn(workoutService, 'deleteExercise').mockReturnValue(of(true));
+
+      component.deleteExercise(ex1);
+
+      expect(deleteExerciseSpy).toHaveBeenCalledWith(50);
+      const remainingExercises = component.workout()?.exercises;
+      expect(remainingExercises?.length).toBe(1);
+      expect(remainingExercises?.[0].id).toBe(51);
+      expect(remainingExercises?.[0].orderIndex).toBe(1);
+      expect(component.isDeletingExercise()).toBeNull();
+    });
+
+    it('should open confirmation modal when clicking delete exercise button and cancel on Cancel', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const deleteSpy = vi.spyOn(workoutService, 'deleteExercise');
+      const ex1 = {
+        id: 50,
+        orderIndex: 1,
+        exercise: { id: 10, name: 'Squat', isSystem: true },
+        sets: [],
+      };
+      component.workout.set({
+        id: 1,
+        title: 'Trening #1',
+        exercises: [ex1],
+      });
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      expect(compiled.querySelector('.modal-dialog')).toBeNull();
+
+      const trashBtn = compiled.querySelector<HTMLButtonElement>('.btn-delete-exercise');
+      trashBtn?.click();
+      fixture.detectChanges();
+
+      const modal = compiled.querySelector<HTMLElement>('.modal-dialog');
+      expect(modal).toBeTruthy();
+      expect(modal?.textContent).toContain('Delete Exercise');
+      expect(modal?.textContent).toContain('Are you sure you want to delete Squat?');
+
+      const cancelBtn = modal?.querySelector<HTMLButtonElement>('.btn-modal-cancel');
+      cancelBtn?.click();
+      fixture.detectChanges();
+
+      expect(compiled.querySelector('.modal-dialog')).toBeNull();
+      expect(deleteSpy).not.toHaveBeenCalled();
+      expect(component.workout()?.exercises?.length).toBe(1);
+    });
+
+    it('should delete exercise when confirmed in modal', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const deleteSpy = vi.spyOn(workoutService, 'deleteExercise').mockReturnValue(of(true));
+      const ex1 = {
+        id: 50,
+        orderIndex: 1,
+        exercise: { id: 10, name: 'Squat', isSystem: true },
+        sets: [],
+      };
+      component.workout.set({
+        id: 1,
+        title: 'Trening #1',
+        exercises: [ex1],
+      });
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const trashBtn = compiled.querySelector<HTMLButtonElement>('.btn-delete-exercise');
+      trashBtn?.click();
+      fixture.detectChanges();
+
+      const deleteBtn = compiled.querySelector<HTMLButtonElement>('.btn-modal-delete');
+      deleteBtn?.click();
+      fixture.detectChanges();
+
+      expect(deleteSpy).toHaveBeenCalledWith(50);
+      expect(compiled.querySelector('.modal-dialog')).toBeNull();
+      expect(component.workout()?.exercises?.length).toBe(0);
+    });
+  });
 });
-
-
-

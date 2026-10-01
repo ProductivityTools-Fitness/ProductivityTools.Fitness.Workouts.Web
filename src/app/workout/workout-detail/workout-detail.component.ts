@@ -50,6 +50,8 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   savingSetId = signal<number | null>(null);
   isDeletingSet = signal<number | null>(null);
   setToDelete = signal<WorkoutSet | null>(null);
+  isDeletingExercise = signal<number | null>(null);
+  exerciseToDelete = signal<WorkoutExercise | null>(null);
   editingNotesExerciseId = signal<number | null>(null);
   exerciseNotesInput = '';
   savingNotesExerciseId = signal<number | null>(null);
@@ -463,6 +465,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
       this.cancelEditTitle();
       this.cancelEditNotes();
       this.cancelDeleteSet();
+      this.cancelDeleteExercise();
       this.cancelDeleteWorkout();
     }
   }
@@ -1106,6 +1109,59 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error deleting set:', err);
         this.isDeletingSet.set(null);
+      },
+    });
+  }
+
+  promptDeleteExercise(exercise: WorkoutExercise): void {
+    if (this.isReadOnly()) return;
+    this.exerciseToDelete.set(exercise);
+  }
+
+  cancelDeleteExercise(): void {
+    this.exerciseToDelete.set(null);
+  }
+
+  confirmDeleteExercise(): void {
+    const exercise = this.exerciseToDelete();
+    if (!exercise) return;
+    this.exerciseToDelete.set(null);
+    this.deleteExercise(exercise);
+  }
+
+  deleteExercise(exercise: WorkoutExercise): void {
+    if (this.isReadOnly() || !exercise.id) return;
+    if (this.isDeletingExercise() === exercise.id) return;
+
+    const timer = this.activeTimer();
+    if (timer && (exercise.sets || []).some((s) => s.id === timer.setId)) {
+      this.activeTimer.set(null);
+    }
+    if (this.isResting(exercise)) {
+      this.skipRest();
+    }
+
+    this.isDeletingExercise.set(exercise.id);
+    this.workoutService.deleteExercise(exercise.id).subscribe({
+      next: () => {
+        this.workout.update((currentWorkout) => {
+          if (!currentWorkout || !currentWorkout.exercises) return currentWorkout;
+          const remainingExercises = currentWorkout.exercises.filter((ex) => ex.id !== exercise.id);
+          const renumberedExercises = remainingExercises.map((ex, idx) => ({
+            ...ex,
+            orderIndex: idx + 1,
+          }));
+          return {
+            ...currentWorkout,
+            exercises: renumberedExercises,
+          };
+        });
+        this.isDeletingExercise.set(null);
+        void this.syncWakeLock();
+      },
+      error: (err) => {
+        console.error('Error deleting exercise:', err);
+        this.isDeletingExercise.set(null);
       },
     });
   }
