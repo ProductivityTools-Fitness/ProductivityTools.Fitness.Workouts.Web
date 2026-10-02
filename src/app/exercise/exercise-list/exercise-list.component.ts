@@ -27,14 +27,10 @@ export class ExerciseListComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
       const workoutIdParam = params.get('workoutId');
-      if (workoutIdParam) {
-        const id = Number(workoutIdParam);
-        this.workoutId.set(id);
-        this.loadWorkoutExercises(id);
-      } else {
-        this.workoutId.set(null);
-        this.selectedExerciseIds.set(new Set());
-      }
+      this.workoutId.set(workoutIdParam ? Number(workoutIdParam) : null);
+      // Always start with nothing selected: the picker only adds new exercises,
+      // so preselecting the ones already in the workout would add them again.
+      this.selectedExerciseIds.set(new Set());
     });
 
     this.loadExercises();
@@ -53,20 +49,6 @@ export class ExerciseListComponent implements OnInit {
         console.error('Error loading exercises:', err);
         this.errorMessage.set('Nie udało się pobrać listy ćwiczeń.');
         this.isLoading.set(false);
-      },
-    });
-  }
-
-  loadWorkoutExercises(workoutId: number): void {
-    this.workoutService.getWorkout(workoutId).subscribe({
-      next: (workout) => {
-        if (workout && workout.exercises) {
-          const ids = workout.exercises.map((e) => e.exercise.id);
-          this.selectedExerciseIds.set(new Set(ids));
-        }
-      },
-      error: (err) => {
-        console.warn('Could not load workout exercises for preselection:', err);
       },
     });
   }

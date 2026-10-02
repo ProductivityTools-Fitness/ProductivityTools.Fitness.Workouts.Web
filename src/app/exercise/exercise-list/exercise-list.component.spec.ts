@@ -1,22 +1,27 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { ExerciseListComponent } from './exercise-list.component';
 import { Exercise } from '../models/exercise';
+import { WorkoutService } from '../../workout/workout.service';
 
 describe('ExerciseListComponent', () => {
   let component: ExerciseListComponent;
   let fixture: ComponentFixture<ExerciseListComponent>;
+  let queryParamMap$: BehaviorSubject<ParamMap>;
 
   beforeEach(async () => {
+    queryParamMap$ = new BehaviorSubject<ParamMap>(convertToParamMap({}));
     await TestBed.configureTestingModule({
       imports: [ExerciseListComponent],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: ActivatedRoute, useValue: { queryParamMap: queryParamMap$ } },
       ],
     }).compileComponents();
 
@@ -69,6 +74,18 @@ describe('ExerciseListComponent', () => {
     component.toggleExercise(1);
     expect(component.selectedExerciseIds().has(1)).toBe(false);
     expect(component.selectedExerciseIds().has(2)).toBe(true);
+  });
+
+  it('should start with no exercises selected when opened for a workout', () => {
+    const workoutService = TestBed.inject(WorkoutService);
+    const getWorkoutSpy = vi.spyOn(workoutService, 'getWorkout');
+
+    component.toggleExercise(1);
+    queryParamMap$.next(convertToParamMap({ workoutId: '7' }));
+
+    expect(component.workoutId()).toBe(7);
+    expect(component.selectedExerciseIds().size).toBe(0);
+    expect(getWorkoutSpy).not.toHaveBeenCalled();
   });
 });
 
