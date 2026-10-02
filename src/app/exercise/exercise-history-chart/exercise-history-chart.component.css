@@ -1,0 +1,89 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.history-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: inherit;
+}
+
+.grid-line {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.axis-label {
+  fill: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.axis-date {
+  fill: #334155;
+}
+
+.axis-unit {
+  fill: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.line {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.point-halo {
+  fill: transparent;
+  cursor: default;
+}
+
+.point-dot {
+  fill: #ffffff;
+  stroke: #2563eb;
+  stroke-width: 2.5;
+  transition: r 0.15s ease;
+}
+
+.point.best .point-dot {
+  fill: #16a34a;
+  stroke: #16a34a;
+}
+
+.point-label {
+  fill: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  paint-order: stroke;
+  stroke: #f9fafb;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.point.labelled .point-label {
+  opacity: 1;
+}
+
+.point.best .point-label {
+  opacity: 1;
+  fill: #15803d;
+}
+
+.point:hover .point-label {
+  opacity: 1;
+}
+
+.point:hover .point-dot {
+  r: 6.5;
+}

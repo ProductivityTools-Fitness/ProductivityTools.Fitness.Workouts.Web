@@ -1,0 +1,48 @@
+<svg
+  class="history-chart"
+  [attr.viewBox]="'0 0 ' + width + ' ' + height"
+  preserveAspectRatio="xMidYMid meet"
+  role="img"
+  aria-label="Progress of the best result over the last workouts"
+>
+  <defs>
+    <linearGradient id="history-area-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#2563eb" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Horizontal guides + Y labels -->
+  @for (tick of yTicks(); track tick.y) {
+    <line class="grid-line" [attr.x1]="padding.left" [attr.x2]="width - padding.right" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+    <text class="axis-label" [attr.x]="padding.left - 8" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+  }
+
+  <!-- Unit in the corner -->
+  @if (unit()) {
+    <text class="axis-unit" [attr.x]="padding.left - 8" [attr.y]="padding.top - 6" text-anchor="end">{{ unit() }}</text>
+  }
+
+  <!-- Area + line -->
+  @if (areaPath()) {
+    <path class="area" [attr.d]="areaPath()" fill="url(#history-area-fill)" />
+  }
+  @if (linePath()) {
+    <path class="line" [attr.d]="linePath()" />
+  }
+
+  <!-- Points -->
+  @for (p of plotted(); track p.x) {
+    <g class="point" [class.best]="p.isBest" [class.labelled]="p.showLabel">
+      <circle class="point-halo" [attr.cx]="p.x" [attr.cy]="p.y" r="14" />
+      <circle class="point-dot" [attr.cx]="p.x" [attr.cy]="p.y" [attr.r]="p.isBest ? 6 : 4.5" />
+      <text class="point-label" [attr.x]="p.x" [attr.y]="p.y - 12" text-anchor="middle">{{ p.shortLabel }}</text>
+      <title>{{ p.date | date: 'mediumDate' }} · {{ p.label }}{{ p.detail ? ' · ' + p.detail : '' }}</title>
+    </g>
+  }
+
+  <!-- X labels -->
+  @for (p of xTicks(); track p.x) {
+    <text class="axis-label axis-date" [attr.x]="p.x" [attr.y]="baselineY + 22" text-anchor="middle">{{ p.date | date: 'd MMM' }}</text>
+  }
+</svg>

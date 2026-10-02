@@ -44,11 +44,38 @@
       </div>
 
       <div class="exercise-body">
-        @if (exercise() | exerciseImage; as imageSrc) {
-          <div class="exercise-media">
-            <img [src]="imageSrc" [alt]="exercise()!.name" />
-          </div>
-        }
+        <div class="exercise-media-column">
+          @if (exercise() | exerciseImage; as imageSrc) {
+            <div class="exercise-media">
+              <img [src]="imageSrc" [alt]="exercise()!.name" />
+            </div>
+          }
+
+          <section class="history-section" aria-labelledby="history-title">
+            <div class="history-header">
+              <h4 id="history-title">{{ historyMetric().title }}</h4>
+              @if (historyBest(); as best) {
+                <span class="history-best" title="Personal best in the shown period">
+                  🏆 {{ best.label }}
+                </span>
+              }
+            </div>
+
+            @if (isLoadingHistory()) {
+              <p class="history-empty">Loading history…</p>
+            } @else if (historyPoints().length === 0) {
+              <p class="history-empty">No logged workouts with this exercise yet.</p>
+            } @else {
+              <app-exercise-history-chart
+                [points]="historyPoints()"
+                [unit]="historyMetric().unit"
+              />
+              <p class="history-footnote">
+                Last {{ historyPoints().length }} workout{{ historyPoints().length === 1 ? '' : 's' }} · hover a point for all sets
+              </p>
+            }
+          </section>
+        </div>
 
         <div class="exercise-info">
           <div class="info-grid">
