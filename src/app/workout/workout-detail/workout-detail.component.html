@@ -53,11 +53,7 @@
             </div>
           } @else {
             <div class="title-display">
-              @if (!isReadOnly()) {
-                <h2 (click)="startEditTitle()" class="clickable-title" title="Click to edit workout title">{{ getWorkoutTitle(workout()) }}</h2>
-              } @else {
-                <h2>{{ getWorkoutTitle(workout()) }}</h2>
-              }
+              <h2 (click)="startEditTitle()" class="clickable-title" title="Click to edit workout title">{{ getWorkoutTitle(workout()) }}</h2>
             </div>
           }
         </div>

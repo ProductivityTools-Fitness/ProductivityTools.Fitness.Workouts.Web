@@ -470,8 +470,8 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** The title can be renamed at any time, also for a completed workout without entering edit mode. */
   startEditTitle(): void {
-    if (this.isReadOnly()) return;
     this.titleInput = this.getWorkoutTitle(this.workout());
     this.isEditingTitle.set(true);
   }
@@ -481,7 +481,6 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   }
 
   saveTitle(): void {
-    if (this.isReadOnly()) return;
     const newTitle = this.titleInput.trim();
     const currentWorkout = this.workout();
     if (!currentWorkout || !currentWorkout.id || !newTitle) {

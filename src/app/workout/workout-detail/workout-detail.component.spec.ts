@@ -787,8 +787,8 @@ describe('WorkoutDetailComponent', () => {
 
       const compiled = fixture.nativeElement as HTMLElement;
 
-      // Title should not be clickable
-      expect(compiled.querySelector('.clickable-title')).toBeNull();
+      // Title stays editable even in read-only mode
+      expect(compiled.querySelector('.clickable-title')).toBeTruthy();
 
       // + Add Exercise button should be hidden
       expect(compiled.querySelector('.section-header .btn-add')).toBeNull();
@@ -833,9 +833,10 @@ describe('WorkoutDetailComponent', () => {
       const exercise = completedWorkoutWithData.exercises![0];
       const set = exercise.sets![0];
 
-      // Title editing should be blocked
+      // Title editing is allowed even in read-only mode
       component.startEditTitle();
-      expect(component.isEditingTitle()).toBe(false);
+      expect(component.isEditingTitle()).toBe(true);
+      component.cancelEditTitle();
 
       // Notes editing should be blocked
       component.startEditNotes(exercise);
@@ -903,7 +904,7 @@ describe('WorkoutDetailComponent', () => {
       expect(component.isReadOnly()).toBe(true);
 
       // Controls should be hidden again
-      expect(compiled.querySelector('.clickable-title')).toBeNull();
+      expect(compiled.querySelector('.clickable-title')).toBeTruthy();
       expect(compiled.querySelector('.section-header .btn-add')).toBeNull();
       expect(compiled.querySelector('.btn-edit-notes')).toBeNull();
       expect(compiled.querySelector('.col-editable')).toBeNull();
