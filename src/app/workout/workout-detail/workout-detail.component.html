@@ -13,6 +13,27 @@
       }
     </div>
   } @else if (workout()) {
+    <nav class="workout-nav" aria-label="Workout navigation">
+      <button
+        type="button"
+        class="btn btn-nav btn-nav-prev"
+        (click)="goToPreviousWorkout()"
+        [disabled]="!previousWorkout()"
+        [title]="previousWorkout() ? 'Older: ' + getWorkoutTitle(previousWorkout()) : 'This is the oldest workout'"
+      >
+        ← Previous
+      </button>
+      <button
+        type="button"
+        class="btn btn-nav btn-nav-next"
+        (click)="goToNextWorkout()"
+        [disabled]="!nextWorkout()"
+        [title]="nextWorkout() ? 'Newer: ' + getWorkoutTitle(nextWorkout()) : 'This is the newest workout'"
+      >
+        Next →
+      </button>
+    </nav>
+
     <div class="workout-card">
       <div class="workout-header">
         <div class="workout-meta">

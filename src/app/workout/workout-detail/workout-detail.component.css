@@ -9,6 +9,39 @@
   background: transparent;
 }
 
+.workout-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.btn-nav {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  padding: 0.45rem 0.8rem;
+  white-space: nowrap;
+}
+
+.btn-nav:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.btn-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (min-width: 640px) {
+  .workout-nav {
+    margin-bottom: 1rem;
+  }
+}
+
 .workout-header {
   display: flex;
   justify-content: space-between;

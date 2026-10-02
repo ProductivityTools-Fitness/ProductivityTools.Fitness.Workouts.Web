@@ -33,6 +33,21 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
+  /** All workouts of the user, newest first (same order as the list page). Used for prev/next. */
+  workoutList = signal<Workout[]>([]);
+  /** Older workout than the current one, or null when this is the oldest. */
+  previousWorkout = computed<Workout | null>(() => {
+    const list = this.workoutList();
+    const idx = list.findIndex((w) => w.id === this.workoutId());
+    return idx >= 0 && idx + 1 < list.length ? list[idx + 1] : null;
+  });
+  /** Newer workout than the current one, or null when this is the newest. */
+  nextWorkout = computed<Workout | null>(() => {
+    const list = this.workoutList();
+    const idx = list.findIndex((w) => w.id === this.workoutId());
+    return idx > 0 ? list[idx - 1] : null;
+  });
+
   currentTime = signal<Date>(new Date());
   private timerInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -86,6 +101,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
+    this.loadWorkoutList();
     this.route.queryParamMap.subscribe((params) => {
       const idParam = params.get('workoutId');
       if (idParam) {
@@ -97,6 +113,29 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
         this.workout.set(null);
       }
     });
+  }
+
+  /** Fetches the workout order so the user can step to the previous/next workout without leaving the page. */
+  loadWorkoutList(): void {
+    this.workoutService.getWorkoutList().subscribe({
+      next: (workouts) => this.workoutList.set(workouts),
+      error: (err) => console.warn('Could not load workout list for navigation:', err),
+    });
+  }
+
+  goToWorkout(workout: Workout | null): void {
+    if (!workout?.id || workout.id === this.workoutId()) return;
+    this.stopTimer();
+    this.skipRest();
+    this.router.navigate(['/workouts/detail'], { queryParams: { workoutId: workout.id } });
+  }
+
+  goToPreviousWorkout(): void {
+    this.goToWorkout(this.previousWorkout());
+  }
+
+  goToNextWorkout(): void {
+    this.goToWorkout(this.nextWorkout());
   }
 
   ngOnDestroy(): void {

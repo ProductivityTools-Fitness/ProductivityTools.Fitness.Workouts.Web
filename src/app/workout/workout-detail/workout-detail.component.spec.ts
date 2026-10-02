@@ -1618,4 +1618,54 @@ describe('WorkoutDetailComponent', () => {
       expect(component.workout()?.exercises?.length).toBe(0);
     });
   });
+
+  describe('Previous / next workout navigation', () => {
+    // Newest first, like the API returns them.
+    const list: Workout[] = [
+      { id: 3, title: 'Trening #3', exercises: [] },
+      { id: 2, title: 'Trening #2', exercises: [] },
+      { id: 1, title: 'Trening #1', exercises: [] },
+    ];
+
+    it('should resolve previous (older) and next (newer) workout from the list', () => {
+      component.workoutList.set(list);
+      component.workoutId.set(2);
+
+      expect(component.previousWorkout()?.id).toBe(1);
+      expect(component.nextWorkout()?.id).toBe(3);
+    });
+
+    it('should disable Next on the newest and Previous on the oldest workout', () => {
+      component.workoutList.set(list);
+
+      component.workoutId.set(3);
+      component.workout.set(list[0]);
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+      expect(compiled.querySelector<HTMLButtonElement>('.btn-nav-next')?.disabled).toBe(true);
+      expect(compiled.querySelector<HTMLButtonElement>('.btn-nav-prev')?.disabled).toBe(false);
+
+      component.workoutId.set(1);
+      component.workout.set(list[2]);
+      fixture.detectChanges();
+      expect(compiled.querySelector<HTMLButtonElement>('.btn-nav-next')?.disabled).toBe(false);
+      expect(compiled.querySelector<HTMLButtonElement>('.btn-nav-prev')?.disabled).toBe(true);
+    });
+
+    it('should navigate to the neighbouring workout when the buttons are clicked', () => {
+      const router = TestBed.inject(Router);
+      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      component.workoutList.set(list);
+      component.workoutId.set(2);
+      component.workout.set(list[1]);
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      compiled.querySelector<HTMLButtonElement>('.btn-nav-prev')?.click();
+      expect(navigateSpy).toHaveBeenCalledWith(['/workouts/detail'], { queryParams: { workoutId: 1 } });
+
+      compiled.querySelector<HTMLButtonElement>('.btn-nav-next')?.click();
+      expect(navigateSpy).toHaveBeenCalledWith(['/workouts/detail'], { queryParams: { workoutId: 3 } });
+    });
+  });
 });
