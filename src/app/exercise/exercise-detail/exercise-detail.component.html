@@ -70,9 +70,16 @@
                 [points]="historyPoints()"
                 [unit]="historyMetric().unit"
               />
-              <p class="history-footnote">
-                Last {{ historyPoints().length }} workout{{ historyPoints().length === 1 ? '' : 's' }} · hover a point for all sets
-              </p>
+              <div class="history-footer">
+                <span class="history-footnote">Last {{ historyPoints().length }} workout{{ historyPoints().length === 1 ? '' : 's' }}</span>
+                <a
+                  class="history-details-link"
+                  [routerLink]="['/exercises/history']"
+                  [queryParams]="workoutId() ? { exerciseId: exercise()!.id, workoutId: workoutId() } : { exerciseId: exercise()!.id }"
+                >
+                  Go to details →
+                </a>
+              </div>
             }
           </section>
         </div>

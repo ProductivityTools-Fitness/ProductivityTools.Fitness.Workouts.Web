@@ -1,0 +1,85 @@
+<div class="exercise-history-container">
+  <div class="header-nav">
+    <a
+      [routerLink]="['/exercises/detail']"
+      [queryParams]="workoutId() ? { exerciseId: exerciseId(), workoutId: workoutId() } : { exerciseId: exerciseId() }"
+      class="back-link"
+    >
+      ← Wróć do ćwiczenia
+    </a>
+    @if (workoutId()) {
+      <span class="nav-divider">•</span>
+      <a
+        [routerLink]="['/workouts/detail']"
+        [queryParams]="{ workoutId: workoutId() }"
+        class="back-link"
+      >
+        ← Wróć do treningu #{{ workoutId() }}
+      </a>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading-message">Loading history... Please wait.</p>
+  } @else if (errorMessage()) {
+    <div class="error-box">
+      <p>{{ errorMessage() }}</p>
+      @if (exerciseId()) {
+        <button class="btn btn-retry" (click)="load(exerciseId()!)">Retry</button>
+      }
+    </div>
+  } @else if (exercise(); as ex) {
+    <header class="page-header">
+      <h1>{{ ex.name }}</h1>
+      <p class="subtitle">
+        {{ metric().title }} ·
+        <strong>{{ rows().length }}</strong> {{ rows().length === 1 ? 'workout' : 'workouts' }}
+      </p>
+    </header>
+
+    @if (rows().length === 0) {
+      <p class="history-empty">This exercise has not been performed in any workout yet.</p>
+    } @else {
+      <div class="table-responsive">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-workout">Workout</th>
+              <th class="col-best">{{ metric().columnTitle }}</th>
+              <th class="col-sets">Sets</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.workoutId) {
+              <tr>
+                <td class="col-date">
+                  @if (row.date) {
+                    {{ row.date | date: 'mediumDate' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td class="col-workout">
+                  <a [routerLink]="['/workouts/detail']" [queryParams]="{ workoutId: row.workoutId }" class="workout-link">
+                    {{ row.workoutName }}
+                  </a>
+                </td>
+                <td class="col-best">
+                  @if (row.best) {
+                    <span class="best-value">{{ row.best }}</span>
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
+                <td class="col-sets muted">{{ row.sets || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    <p class="no-selection">No exercise selected.</p>
+  }
+</div>

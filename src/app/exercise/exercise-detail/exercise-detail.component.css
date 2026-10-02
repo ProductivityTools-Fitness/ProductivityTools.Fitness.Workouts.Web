@@ -150,11 +150,32 @@
   text-align: center;
 }
 
+.history-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
 .history-footnote {
-  margin: 0.35rem 0 0;
   font-size: 0.72rem;
   color: #9ca3af;
-  text-align: center;
+}
+
+.history-details-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+
+.history-details-link:hover {
+  background-color: #eff6ff;
+  text-decoration: underline;
 }
 
 .exercise-info {
