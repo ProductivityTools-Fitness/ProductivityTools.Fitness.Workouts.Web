@@ -47,13 +47,6 @@ export const routes: Routes = [
       import('./catalog/catalog.component').then((m) => m.CatalogComponent),
   },
   {
-    path: 'hevy-import',
-    loadComponent: () =>
-      import('./hevy-import/hevy-import.component').then(
-        (m) => m.HevyImportComponent,
-      ),
-  },
-  {
     path: 'login',
     loadComponent: () =>
       import('./auth/login/login.component').then((m) => m.LoginComponent),

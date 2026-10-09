@@ -86,13 +86,12 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('app-notification')).toBeTruthy();
   });
 
-  it('should render navigation links including Hevy import', () => {
+  it('should render navigation links', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     const navLinks = compiled.querySelectorAll('nav a');
     const linkTexts = Array.from(navLinks).map((a) => a.textContent?.trim());
-    expect(linkTexts).toContain('Hevy import');
     expect(linkTexts).toContain('Catalogue');
     expect(linkTexts).toContain('Treningi');
   });
