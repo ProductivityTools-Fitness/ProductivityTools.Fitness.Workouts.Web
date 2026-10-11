@@ -3,6 +3,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { WorkoutService, SaveSetRequest } from '../workout.service';
 import { Workout, WorkoutExercise, WorkoutSet } from '../models/workout';
 import { TrackingType } from '../../exercise/models/exercise';
@@ -63,6 +64,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   isAddingSet = signal<number | null>(null);
   editingCell = signal<{ setId: number; field: SetField } | null>(null);
   savingSetId = signal<number | null>(null);
+  private readonly saveSetSubscriptions = new Map<number, Subscription>();
   isDeletingSet = signal<number | null>(null);
   setToDelete = signal<WorkoutSet | null>(null);
   isDeletingExercise = signal<number | null>(null);
@@ -1031,21 +1033,89 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
     );
   }
 
+  private commitActiveEditForSet(set: WorkoutSet): void {
+    const active = this.editingCell();
+    if (!active || !set.id) return;
+
+    if (active.setId !== set.id) {
+      const otherEl =
+        typeof document !== 'undefined'
+          ? (document.getElementById(`input-${active.field}-${active.setId}`) as HTMLInputElement | null)
+          : null;
+      otherEl?.blur();
+      return;
+    }
+
+    const inputEl =
+      typeof document !== 'undefined'
+        ? (document.getElementById(`input-${active.field}-${set.id}`) as HTMLInputElement | null)
+        : null;
+    this.stopEdit();
+
+    if (!inputEl) return;
+    const rawValue = inputEl.value;
+
+    switch (active.field) {
+      case 'reps': {
+        const num = Math.round(Number(rawValue));
+        if (!isNaN(num) && num >= 0) {
+          set.reps = num;
+        }
+        break;
+      }
+      case 'weight': {
+        const num = Number(rawValue);
+        if (!isNaN(num) && num >= 0) {
+          set.weightKg = num;
+        }
+        break;
+      }
+      case 'duration': {
+        const seconds = this.parseDurationInput(rawValue);
+        if (seconds !== null) {
+          set.durationSeconds = seconds;
+          this.markDurationMeasured(set.id);
+        }
+        break;
+      }
+      case 'distance': {
+        const meters = Number(rawValue);
+        if (Number.isFinite(meters) && meters >= 0) {
+          set.distanceMeters = meters;
+        }
+        break;
+      }
+    }
+  }
+
   sendSaveSet(request: SaveSetRequest, onRollback?: () => void): void {
+    const previousSub = this.saveSetSubscriptions.get(request.id);
+    if (previousSub) {
+      previousSub.unsubscribe();
+      this.saveSetSubscriptions.delete(request.id);
+    }
+
     this.savingSetId.set(request.id);
-    this.workoutService.saveSet(request).subscribe({
+    const sub = this.workoutService.saveSet(request).subscribe({
       next: (updatedSet) => {
+        this.saveSetSubscriptions.delete(request.id);
         this.updateLocalSet(updatedSet);
-        this.savingSetId.set(null);
+        if (this.savingSetId() === request.id) {
+          this.savingSetId.set(null);
+        }
       },
       error: (err) => {
+        this.saveSetSubscriptions.delete(request.id);
         console.error('Error saving set:', err);
         if (onRollback) {
           onRollback();
         }
-        this.savingSetId.set(null);
+        if (this.savingSetId() === request.id) {
+          this.savingSetId.set(null);
+        }
       },
     });
+    this.saveSetSubscriptions.set(request.id, sub);
   }
 
   updateLocalSet(updatedSet: WorkoutSet): void {
@@ -1070,7 +1140,8 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
 
   completeSet(set: WorkoutSet, exercise?: WorkoutExercise): void {
     if (this.isReadOnly() || !set.id) return;
-    if (this.savingSetId() === set.id) return;
+
+    this.commitActiveEditForSet(set);
 
     const previousStatus = set.isCompleted;
     const newStatus = !previousStatus;
@@ -1094,6 +1165,8 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
         id: set.id,
         kg: set.weightKg,
         reps: set.reps,
+        ...(set.durationSeconds != null ? { durationSeconds: set.durationSeconds } : {}),
+        ...(set.distanceMeters != null ? { distanceMeters: set.distanceMeters } : {}),
         status: newStatus,
       },
       () => {

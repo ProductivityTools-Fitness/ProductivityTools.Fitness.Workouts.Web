@@ -254,6 +254,51 @@ describe('WorkoutDetailComponent', () => {
     expect(checkBtn?.querySelector('.check-icon')).toBeTruthy();
   });
 
+  it('should commit edited reps and complete the set on the first click when clicking Complete directly from the reps input', () => {
+    const workoutService = TestBed.inject(WorkoutService);
+    const set = { id: 101, setNumber: 1, weightKg: 80, reps: 10, isCompleted: false };
+    const workout: Workout = {
+      id: 1,
+      title: 'Trening #1',
+      exercises: [
+        {
+          orderIndex: 1,
+          exercise: { id: 42, name: 'Squat', isSystem: true },
+          sets: [set],
+        },
+      ],
+    };
+    component.workout.set(workout);
+    fixture.detectChanges();
+
+    component.startEdit(set, 'reps');
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const repsInput = compiled.querySelector<HTMLInputElement>('#input-reps-101');
+    expect(repsInput).toBeTruthy();
+    repsInput!.value = '12';
+
+    const saveSetSpy = vi
+      .spyOn(workoutService, 'saveSet')
+      .mockReturnValue(of({ ...set, reps: 12, isCompleted: true }));
+
+    const checkBtn = compiled.querySelector<HTMLButtonElement>('.btn-check-set');
+    checkBtn?.click();
+    fixture.detectChanges();
+
+    expect(component.isEditing(101, 'reps')).toBe(false);
+    expect(saveSetSpy).toHaveBeenCalledTimes(1);
+    expect(saveSetSpy).toHaveBeenCalledWith({
+      id: 101,
+      kg: 80,
+      reps: 12,
+      status: true,
+    });
+    expect(component.workout()?.exercises?.[0].sets?.[0].reps).toBe(12);
+    expect(component.workout()?.exercises?.[0].sets?.[0].isCompleted).toBe(true);
+  });
+
   it('should delete a set and renumber remaining sets', () => {
     const workoutService = TestBed.inject(WorkoutService);
     const set1 = { id: 101, setNumber: 1, weightKg: 80, reps: 10, isCompleted: true };
