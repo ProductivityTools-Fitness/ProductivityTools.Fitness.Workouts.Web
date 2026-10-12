@@ -1,5 +1,6 @@
 import { ExerciseImagePipe } from '../exercise-image.pipe';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExerciseService } from '../exercise.service';
 import { Exercise } from '../models/exercise';
@@ -7,7 +8,7 @@ import { WorkoutService } from '../../workout/workout.service';
 
 @Component({
   selector: 'app-exercise-list',
-  imports: [RouterLink, ExerciseImagePipe],
+  imports: [RouterLink, FormsModule, ExerciseImagePipe],
   templateUrl: './exercise-list.component.html',
   styleUrl: './exercise-list.component.css',
 })
@@ -18,11 +19,65 @@ export class ExerciseListComponent implements OnInit {
   private readonly router = inject(Router);
 
   exerciseList = signal<Exercise[]>([]);
+  selectedMuscle = signal<string>('');
+  selectedEquipment = signal<string>('');
   selectedExerciseIds = signal<Set<number>>(new Set());
   workoutId = signal<number | null>(null);
   isLoading = signal<boolean>(false);
   isSaving = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
+
+  readonly availableMuscles = computed<string[]>(() => {
+    const musclesMap = new Map<string, string>();
+    for (const exercise of this.exerciseList()) {
+      for (const muscle of this.getExerciseMuscles(exercise)) {
+        const key = muscle.toLowerCase();
+        if (!musclesMap.has(key)) {
+          musclesMap.set(key, muscle);
+        }
+      }
+    }
+    return Array.from(musclesMap.values()).sort((a, b) => a.localeCompare(b));
+  });
+
+  readonly availableEquipments = computed<string[]>(() => {
+    const equipmentMap = new Map<string, string>();
+    for (const exercise of this.exerciseList()) {
+      const equip = (exercise.equipmentCategory ?? '').trim();
+      if (equip) {
+        const key = equip.toLowerCase();
+        if (!equipmentMap.has(key)) {
+          equipmentMap.set(key, equip);
+        }
+      }
+    }
+    return Array.from(equipmentMap.values()).sort((a, b) => a.localeCompare(b));
+  });
+
+  readonly filteredExerciseList = computed<Exercise[]>(() => {
+    const muscleFilter = this.selectedMuscle().trim().toLowerCase();
+    const equipmentFilter = this.selectedEquipment().trim().toLowerCase();
+
+    return this.exerciseList().filter((exercise) => {
+      if (muscleFilter) {
+        const exerciseMuscles = this.getExerciseMuscles(exercise).map((m) => m.toLowerCase());
+        if (!exerciseMuscles.includes(muscleFilter)) {
+          return false;
+        }
+      }
+      if (equipmentFilter) {
+        const equip = (exercise.equipmentCategory ?? '').trim().toLowerCase();
+        if (equip !== equipmentFilter) {
+          return false;
+        }
+      }
+      return true;
+    });
+  });
+
+  readonly hasActiveFilters = computed<boolean>(() =>
+    Boolean(this.selectedMuscle().trim() || this.selectedEquipment().trim()),
+  );
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
@@ -51,6 +106,11 @@ export class ExerciseListComponent implements OnInit {
         this.isLoading.set(false);
       },
     });
+  }
+
+  clearFilters(): void {
+    this.selectedMuscle.set('');
+    this.selectedEquipment.set('');
   }
 
   toggleExercise(id: number): void {
@@ -85,8 +145,24 @@ export class ExerciseListComponent implements OnInit {
       },
     });
   }
+
+  private getExerciseMuscles(exercise: Exercise): string[] {
+    const muscles: string[] = [];
+    const primary = (exercise.targetMuscle || exercise.primaryMuscle || '').trim();
+    if (primary) {
+      muscles.push(primary);
+    }
+    if (exercise.secondaryMuscles) {
+      const secondary = Array.isArray(exercise.secondaryMuscles)
+        ? exercise.secondaryMuscles
+        : String(exercise.secondaryMuscles).split(',');
+      for (const m of secondary) {
+        const trimmed = m.trim();
+        if (trimmed) {
+          muscles.push(trimmed);
+        }
+      }
+    }
+    return muscles;
+  }
 }
-
-
-
-

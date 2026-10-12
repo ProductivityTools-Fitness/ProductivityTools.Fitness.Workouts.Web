@@ -33,12 +33,56 @@
       <button class="btn btn-retry" (click)="loadExercises()">Spróbuj ponownie</button>
     </div>
   } @else if (exerciseList().length > 0) {
-    <div class="exercises-grid">
-      @for (exercise of exerciseList(); track exercise.id) {
-        <div
-          class="exercise-card"
-          [class.card-selected]="workoutId() && selectedExerciseIds().has(exercise.id)"
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label for="muscle-filter" class="filter-label">Mięśnie</label>
+        <select
+          id="muscle-filter"
+          class="filter-select"
+          [ngModel]="selectedMuscle()"
+          (ngModelChange)="selectedMuscle.set($event)"
         >
+          <option value="">Wszystkie mięśnie</option>
+          @for (muscle of availableMuscles(); track muscle) {
+            <option [value]="muscle">{{ muscle }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="equipment-filter" class="filter-label">Sprzęt</label>
+        <select
+          id="equipment-filter"
+          class="filter-select"
+          [ngModel]="selectedEquipment()"
+          (ngModelChange)="selectedEquipment.set($event)"
+        >
+          <option value="">Cały sprzęt</option>
+          @for (equipment of availableEquipments(); track equipment) {
+            <option [value]="equipment">{{ equipment }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <span class="filter-count">
+          Wyświetlono <strong>{{ filteredExerciseList().length }}</strong> z {{ exerciseList().length }}
+        </span>
+        @if (hasActiveFilters()) {
+          <button type="button" class="btn btn-clear-filters" (click)="clearFilters()">
+            ✕ Wyczyść filtry
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (filteredExerciseList().length > 0) {
+      <div class="exercises-grid">
+        @for (exercise of filteredExerciseList(); track exercise.id) {
+          <div
+            class="exercise-card"
+            [class.card-selected]="workoutId() && selectedExerciseIds().has(exercise.id)"
+          >
           <div class="card-media">
             <a
               [routerLink]="['/exercises/detail']"
@@ -130,7 +174,15 @@
           </div>
         </div>
       }
-    </div>
+      </div>
+    } @else {
+      <div class="state-box">
+        <p>Brak ćwiczeń spełniających wybrane filtry.</p>
+        <button type="button" class="btn btn-clear-filters" (click)="clearFilters()">
+          Wyczyść filtry
+        </button>
+      </div>
+    }
 
     @if (workoutId()) {
       <div class="save-bar">
