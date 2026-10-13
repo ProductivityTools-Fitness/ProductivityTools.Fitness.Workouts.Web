@@ -1,2 +1,194 @@
-<p>hello works!</p>
+<div class="calendar-page-container">
+  <div class="calendar-header">
+    <div class="header-title-group">
+      <div class="title-with-spinner">
+        <h2>Kalendarz treningowy</h2>
+        @if (isLoading()) {
+          <span class="inline-spinner" title="Ładowanie treningów..."></span>
+        }
+      </div>
+      <div class="summary-pills">
+        <span class="summary-pill training-days-pill">
+          <span class="pill-dot"></span>
+          <strong>{{ monthlyTrainingDaysCount() }}</strong> dni treningowych
+        </span>
+        <span class="summary-pill workouts-count-pill">
+          <strong>{{ monthlyWorkoutCount() }}</strong> treningów w miesiącu
+        </span>
+      </div>
+    </div>
 
+    <div class="calendar-controls">
+      <button
+        type="button"
+        class="btn btn-today"
+        (click)="goToToday()"
+      >
+        Dzisiaj
+      </button>
+      <div class="month-nav">
+        <button
+          type="button"
+          class="btn-nav"
+          (click)="previousMonth()"
+          aria-label="Poprzedni miesiąc"
+          title="Poprzedni miesiąc"
+        >
+          ‹
+        </button>
+        <span class="month-label">{{ monthLabel() }}</span>
+        <button
+          type="button"
+          class="btn-nav"
+          (click)="nextMonth()"
+          aria-label="Następny miesiąc"
+          title="Następny miesiąc"
+        >
+          ›
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p class="loading-title">Ładowanie kalendarza...</p>
+      <p class="loading-subtitle">Pobieranie historii Twoich treningów. Proszę czekać.</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="error-box">
+      <p>{{ errorMessage() }}</p>
+      <button type="button" class="btn btn-retry" (click)="loadWorkouts()">Retry</button>
+    </div>
+  } @else {
+    <div class="calendar-layout">
+      <div class="calendar-card">
+        <div class="weekdays-grid">
+          @for (dayName of weekDays; track dayName) {
+            <div class="weekday-cell">{{ dayName }}</div>
+          }
+        </div>
+
+        <div class="days-grid">
+          @for (day of calendarDays(); track day.dateKey) {
+            <button
+              type="button"
+              class="calendar-day"
+              [class.outside-month]="!day.isCurrentMonth"
+              [class.other-month]="!day.isCurrentMonth"
+              [class.today]="day.isToday"
+              [class.is-today]="day.isToday"
+              [class.training-day]="day.workouts.length > 0"
+              [class.has-workouts]="day.workouts.length > 0"
+              [class.selected]="selectedDateKey() === day.dateKey"
+              [attr.data-date]="day.dateKey"
+              (click)="selectDay(day)"
+            >
+              <div class="day-top">
+                <span class="day-number">{{ day.dayNumber }}</span>
+                @if (day.isToday) {
+                  <span class="today-tag">Dziś</span>
+                }
+              </div>
+
+              @if (day.workouts.length > 0) {
+                <div class="day-workouts-indicator">
+                  <span class="workout-badge">
+                    <span class="workout-check">✓</span>
+                    <span class="workout-count">{{ day.workouts.length }}</span>
+                  </span>
+                  <span class="workout-preview-title">
+                    {{ getWorkoutTitle(day.workouts[0]) }}
+                  </span>
+                </div>
+                <div class="workout-dots" aria-hidden="true">
+                  @for (w of day.workouts; track w.id ?? $index) {
+                    <span class="workout-dot"></span>
+                  }
+                </div>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="calendar-legend">
+          <span class="legend-item">
+            <span class="legend-swatch swatch-training"></span>
+            Dzień treningowy
+          </span>
+          <span class="legend-item">
+            <span class="legend-swatch swatch-today"></span>
+            Dzisiaj
+          </span>
+          <span class="legend-item">
+            <span class="legend-swatch swatch-selected"></span>
+            Wybrany dzień
+          </span>
+        </div>
+      </div>
+
+      @if (selectedDateKey()) {
+        <div class="selected-day-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Wybrany dzień</h3>
+              <p class="panel-date">{{ selectedDateKey() }}</p>
+            </div>
+            <span class="panel-count-badge">
+              {{ selectedDayWorkouts().length }}
+              {{ selectedDayWorkouts().length === 1 ? 'trening' : 'treningów' }}
+            </span>
+          </div>
+
+          @if (selectedDayWorkouts().length > 0) {
+            <div class="selected-workouts-list">
+              @for (workout of selectedDayWorkouts(); track workout.id ?? $index) {
+                <div
+                  class="workout-item"
+                  (click)="openWorkout(workout.id)"
+                >
+                  <div class="workout-item-main">
+                    <a
+                      [routerLink]="['/workouts/detail']"
+                      [queryParams]="{ workoutId: workout.id }"
+                      class="workout-title-link"
+                      (click)="$event.stopPropagation()"
+                    >
+                      {{ getWorkoutTitle(workout) }}
+                    </a>
+                    <div class="workout-meta">
+                      @if (workout.startTime) {
+                        <span class="workout-time">
+                          {{ workout.startTime | date:'shortTime' }}
+                        </span>
+                      }
+                      @if (workout.status) {
+                        <span class="status-badge" [class]="workout.status.toLowerCase()">
+                          {{ workout.status }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <a
+                    [routerLink]="['/workouts/detail']"
+                    [queryParams]="{ workoutId: workout.id }"
+                    class="btn-open"
+                    (click)="$event.stopPropagation()"
+                  >
+                    Otwórz →
+                  </a>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-day-state">
+              <p class="empty-message">Brak zarejestrowanych treningów w tym dniu.</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
