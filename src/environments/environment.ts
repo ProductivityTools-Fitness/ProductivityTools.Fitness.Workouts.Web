@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://fitness-api-cloud.productivitytools.top/api',
+  apiUrl: 'https://fitness-workouts-api.productivitytools.top/api',
 };
 
