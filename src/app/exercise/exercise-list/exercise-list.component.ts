@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExerciseService } from '../exercise.service';
 import { Exercise } from '../models/exercise';
+import { formatMuscleLabel } from '../muscle-translations.util';
 import { WorkoutService } from '../../workout/workout.service';
 
 @Component({
@@ -107,6 +108,8 @@ export class ExerciseListComponent implements OnInit {
       },
     });
   }
+
+  readonly formatMuscle = formatMuscleLabel;
 
   clearFilters(): void {
     this.selectedMuscle.set('');

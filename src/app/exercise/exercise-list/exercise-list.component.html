@@ -44,7 +44,7 @@
         >
           <option value="">Wszystkie mięśnie</option>
           @for (muscle of availableMuscles(); track muscle) {
-            <option [value]="muscle">{{ muscle }}</option>
+            <option [value]="muscle">{{ formatMuscle(muscle) }}</option>
           }
         </select>
       </div>
