@@ -32,9 +32,60 @@
 }
 
 .exercise-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   border-bottom: 1px solid #eee;
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-admin-link,
+.btn-admin-reimport {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-admin-link {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.btn-admin-link:hover {
+  background: #dbeafe;
+}
+
+.btn-admin-reimport {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+}
+
+.btn-admin-reimport:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-admin-reimport:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .title-group {

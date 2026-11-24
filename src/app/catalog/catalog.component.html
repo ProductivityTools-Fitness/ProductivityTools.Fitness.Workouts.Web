@@ -1,6 +1,20 @@
 <div class="catalog-container">
-  <h2>Exercise Catalogue</h2>
-  <p class="subtitle">Search and import exercises from the shared catalogue into your local list.</p>
+  <div class="catalog-header-row">
+    <div>
+      <h2>Exercise Catalogue</h2>
+      <p class="subtitle">Search and import exercises from the shared catalogue into your local list.</p>
+    </div>
+    @if (authService.isAdmin()) {
+      <button
+        type="button"
+        class="btn btn-reimport-all"
+        [disabled]="isSyncingAll()"
+        (click)="reimportAll()"
+      >
+        {{ isSyncingAll() ? 'Synchronizowanie...' : '↻ Zsynchronizuj wszystkie z katalogu' }}
+      </button>
+    }
+  </div>
 
   <form class="search-form" (ngSubmit)="onSearch()">
     <div class="search-input-group">
@@ -91,6 +105,16 @@
             <div class="card-actions">
               @if (item.isAlreadyImported) {
                 <span class="badge-imported">✓ In your catalogue</span>
+                @if (authService.isAdmin()) {
+                  <button
+                    type="button"
+                    class="btn btn-reimport"
+                    (click)="reimportExercise(item)"
+                    [disabled]="reimportingIds().has(item.catalogExerciseId)"
+                  >
+                    {{ reimportingIds().has(item.catalogExerciseId) ? 'Updating...' : '↻ Re-import' }}
+                  </button>
+                }
               } @else {
                 <button
                   type="button"

@@ -6,6 +6,9 @@ import { Exercise, TrackingType } from '../models/exercise';
 import { ExerciseHistoryEntry } from '../models/exercise-history';
 import { ExerciseHistoryChartComponent, HistoryPoint } from '../exercise-history-chart/exercise-history-chart.component';
 import { HistoryMetric, historyMetricFor, toHistoryPoint } from '../exercise-history.util';
+import { AuthService } from '../../auth/auth.service';
+import { CatalogService } from '../../catalog/catalog.service';
+import { NotificationService } from '../../notification/notification.service';
 
 /** How many past workouts are shown on the progress chart. */
 const HISTORY_LIMIT = 20;
@@ -19,12 +22,16 @@ const HISTORY_LIMIT = 20;
 export class ExerciseDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly exerciseService = inject(ExerciseService);
+  private readonly catalogService = inject(CatalogService);
+  private readonly notificationService = inject(NotificationService);
+  readonly authService = inject(AuthService);
 
   exerciseId = signal<number | null>(null);
   workoutId = signal<number | null>(null);
   exercise = signal<Exercise | null>(null);
   isLoading = signal<boolean>(false);
   isSavingSettings = signal<boolean>(false);
+  isReimporting = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
   /** Past workouts with this exercise, newest first (as returned by the API). */
@@ -116,6 +123,25 @@ export class ExerciseDetailComponent implements OnInit {
       error: (err) => {
         console.error('Error updating exercise settings:', err);
         this.isSavingSettings.set(false);
+      },
+    });
+  }
+
+  reimportFromCatalog(): void {
+    const current = this.exercise();
+    if (!current?.catalogExerciseId || this.isReimporting()) return;
+
+    this.isReimporting.set(true);
+    this.catalogService.reimportExercise(current.catalogExerciseId).subscribe({
+      next: (updated) => {
+        this.exercise.set(updated);
+        this.isReimporting.set(false);
+        this.notificationService.showSuccess('Zaktualizowano ćwiczenie z katalogu.');
+      },
+      error: (err) => {
+        console.error('Error re-importing exercise from catalog:', err);
+        this.isReimporting.set(false);
+        this.notificationService.showError('Nie udało się odświeżyć ćwiczenia z katalogu.');
       },
     });
   }

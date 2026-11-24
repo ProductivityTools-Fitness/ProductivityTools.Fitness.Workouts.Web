@@ -41,6 +41,27 @@
             {{ exercise()!.isSystem ? 'System' : 'Custom' }}
           </span>
         </div>
+
+        @if (authService.isAdmin() && exercise()!.isSystem && exercise()!.catalogExerciseId) {
+          <div class="admin-actions">
+            <a
+              class="btn-admin-link"
+              [href]="'https://pt-fitness-catalog.web.app/exercises/' + exercise()!.catalogExerciseId"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ✏️ Edytuj w Catalogu ↗
+            </a>
+            <button
+              type="button"
+              class="btn-admin-reimport"
+              [disabled]="isReimporting()"
+              (click)="reimportFromCatalog()"
+            >
+              {{ isReimporting() ? 'Odświeżanie...' : '↻ Odśwież z katalogu' }}
+            </button>
+          </div>
+        }
       </div>
 
       <div class="exercise-body">

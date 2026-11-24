@@ -41,6 +41,20 @@ export class CatalogService {
     );
   }
 
+  reimportExercise(catalogExerciseId: string): Observable<Exercise> {
+    return this.http.post<Exercise>(
+      `${environment.apiUrl}/catalog/reimport/${encodeURIComponent(catalogExerciseId)}`,
+      {},
+    );
+  }
+
+  reimportAllExercises(): Observable<{ updated: number; failed: number }> {
+    return this.http.post<{ updated: number; failed: number }>(
+      `${environment.apiUrl}/catalog/reimport-all`,
+      {},
+    );
+  }
+
   /**
    * Address of the animation preview for an exercise that has not been imported yet.
    * Served without authentication, because a browser cannot attach headers to an <img> request.
