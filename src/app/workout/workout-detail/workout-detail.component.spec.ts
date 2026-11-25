@@ -837,6 +837,7 @@ describe('WorkoutDetailComponent', () => {
 
       // + Add Exercise button should be hidden
       expect(compiled.querySelector('.section-header .btn-add')).toBeNull();
+      expect(compiled.querySelector('.exercises-footer .btn-add')).toBeNull();
 
       // Notes should have readonly class and no edit pencil
       expect(compiled.querySelector('.exercise-notes-display.readonly')).toBeTruthy();
@@ -929,7 +930,8 @@ describe('WorkoutDetailComponent', () => {
 
       // Now all edit controls should be visible
       expect(compiled.querySelector('.clickable-title')).toBeTruthy();
-      expect(compiled.querySelector('.section-header .btn-add')).toBeTruthy();
+      expect(compiled.querySelector('.section-header .btn-add')).toBeNull();
+      expect(compiled.querySelector('.exercises-footer .btn-add')).toBeTruthy();
       expect(compiled.querySelector('.btn-edit-notes')).toBeTruthy();
       expect(compiled.querySelectorAll('.col-editable').length).toBeGreaterThan(0);
       expect(compiled.querySelector<HTMLButtonElement>('.btn-check-set')?.disabled).toBe(false);
@@ -950,7 +952,7 @@ describe('WorkoutDetailComponent', () => {
 
       // Controls should be hidden again
       expect(compiled.querySelector('.clickable-title')).toBeTruthy();
-      expect(compiled.querySelector('.section-header .btn-add')).toBeNull();
+      expect(compiled.querySelector('.exercises-footer .btn-add')).toBeNull();
       expect(compiled.querySelector('.btn-edit-notes')).toBeNull();
       expect(compiled.querySelector('.col-editable')).toBeNull();
       expect(compiled.querySelector('.col-delete')).toBeNull();

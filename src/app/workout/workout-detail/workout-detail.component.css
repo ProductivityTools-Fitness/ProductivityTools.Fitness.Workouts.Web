@@ -224,6 +224,12 @@
   background-color: #1d4ed8;
 }
 
+.exercises-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
 .btn-save {
   background-color: #16a34a;
   color: white;

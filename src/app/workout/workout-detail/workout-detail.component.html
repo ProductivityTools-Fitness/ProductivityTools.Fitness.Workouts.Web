@@ -87,15 +87,6 @@
       <div class="exercises-section">
         <div class="section-header">
           <h3>Exercises ({{ workout()!.exercises?.length || 0 }})</h3>
-          @if (!isReadOnly()) {
-            <a
-              class="btn btn-add"
-              [routerLink]="['/exercises']"
-              [queryParams]="{ workoutId: workout()!.id }"
-            >
-              + Add Exercise
-            </a>
-          }
         </div>
 
         @if (workout()!.exercises && workout()!.exercises!.length > 0) {
@@ -486,6 +477,17 @@
               </div>
             }
           </div>
+          @if (!isReadOnly()) {
+            <div class="exercises-footer">
+              <a
+                class="btn btn-add"
+                [routerLink]="['/exercises']"
+                [queryParams]="{ workoutId: workout()!.id }"
+              >
+                + Add Exercise
+              </a>
+            </div>
+          }
         } @else {
           <div class="empty-exercises">
             <p>No exercises added to this workout yet.</p>
