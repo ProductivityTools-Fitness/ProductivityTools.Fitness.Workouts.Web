@@ -1,0 +1,186 @@
+<div class="reports-container">
+  <div class="reports-header">
+    <div>
+      <h2>Raporty i eksport dla Trenera AI</h2>
+      <p class="subtitle">
+        Podsumowanie objętości, progresji 1RM oraz gotowy raport do wklejenia do modelu AI (Gemini / ChatGPT).
+      </p>
+    </div>
+
+    <div class="period-controls">
+      <label for="days-select" class="period-label">Zakres:</label>
+      <select
+        id="days-select"
+        class="period-select"
+        [ngModel]="selectedDays()"
+        (ngModelChange)="onDaysChange(+$event)"
+        [disabled]="isLoading()"
+      >
+        @for (d of dayOptions; track d) {
+          <option [value]="d">Ostatnie {{ d }} dni</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="state-box">Generowanie raportu treningowego...</div>
+  } @else if (errorMessage()) {
+    <div class="error-box">
+      <p>{{ errorMessage() }}</p>
+      <button type="button" class="btn btn-primary" (click)="loadReport()">Spróbuj ponownie</button>
+    </div>
+  } @else if (report(); as r) {
+    <div class="ai-export-card">
+      <div class="ai-export-header">
+        <div>
+          <h3>🤖 Eksport dla Trenera AI</h3>
+          <p class="ai-export-desc">
+            Dostosuj instrukcję (zapisuje się lokalnie w przeglądarce) i skopiuj cały pakiet razem z danymi treningów.
+          </p>
+        </div>
+        <div class="export-buttons">
+          <button type="button" class="btn btn-primary" (click)="copyPromptWithReport()">
+            📋 Kopiuj prompt + raport
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="copyMarkdownOnly()">
+            📋 Sam raport (.md)
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="downloadMarkdown()">
+            ⬇️ Pobierz .md
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="downloadJson()">
+            ⬇️ Pobierz .json
+          </button>
+        </div>
+      </div>
+
+      <textarea
+        class="coach-prompt-input"
+        rows="4"
+        aria-label="Prompt dla Trenera AI"
+        [ngModel]="coachPrompt()"
+        (ngModelChange)="onCoachPromptChange($event)"
+      ></textarea>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Treningi</span>
+        <span class="kpi-value">{{ r.summary.totalWorkouts }}</span>
+        <span class="kpi-sub">{{ r.summary.workoutsPerWeek }} / tydzień</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Wykonane serie</span>
+        <span class="kpi-value">{{ r.summary.totalCompletedSets }}</span>
+        <span class="kpi-sub">w okresie {{ r.days }} dni</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Łączna objętość</span>
+        <span class="kpi-value">{{ r.summary.totalVolumeKg.toLocaleString('pl-PL') }} kg</span>
+        <span class="kpi-sub">ciężar × powtórzenia</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Średni czas</span>
+        <span class="kpi-value">
+          {{ r.summary.averageDurationMinutes > 0 ? r.summary.averageDurationMinutes + ' min' : '—' }}
+        </span>
+        <span class="kpi-sub">na trening</span>
+      </div>
+    </div>
+
+    <section class="report-section">
+      <h3>Objętość na partie mięśniowe</h3>
+      @if (r.muscleVolume.length === 0) {
+        <p class="empty-msg">Brak zarejestrowanych serii w wybranym okresie.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Mięsień</th>
+                <th>Serie / tydzień</th>
+                <th class="num">Razem serii</th>
+                <th class="num">Objętość (kg)</th>
+                <th class="num">Ostatni trening</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of r.muscleVolume; track m.muscle) {
+                <tr>
+                  <td class="muscle-cell">{{ formatMuscle(m.muscle) }}</td>
+                  <td class="bar-cell">
+                    <div class="bar-row">
+                      <div class="bar-track">
+                        <div class="bar-fill" [style.width.%]="barWidthPercent(m.setsPerWeek)"></div>
+                      </div>
+                      <span class="bar-num">{{ m.setsPerWeek }}</span>
+                    </div>
+                  </td>
+                  <td class="num">{{ m.totalSets }}</td>
+                  <td class="num">{{ m.totalVolumeKg.toLocaleString('pl-PL') }}</td>
+                  <td class="num">{{ formatDaysAgo(m.daysSinceLastTrained) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="report-section">
+      <h3>Progresja ćwiczeń</h3>
+      @if (r.exerciseProgress.length === 0) {
+        <p class="empty-msg">Brak ćwiczeń w wybranym okresie.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Ćwiczenie</th>
+                <th>Sprzęt</th>
+                <th class="num">Sesje</th>
+                <th>Najlepszy wynik</th>
+                <th class="num">Est. 1RM</th>
+                <th>Ostatni wynik</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ex of r.exerciseProgress; track ex.exerciseId) {
+                <tr>
+                  <td>
+                    <a
+                      class="exercise-link"
+                      [routerLink]="['/exercises/detail']"
+                      [queryParams]="{ exerciseId: ex.exerciseId }"
+                    >
+                      {{ ex.name }}
+                    </a>
+                  </td>
+                  <td class="muted">{{ ex.equipmentCategory || '—' }}</td>
+                  <td class="num">{{ ex.sessions }}</td>
+                  <td>{{ formatResult(ex.bestWeightKg, ex.bestReps, ex.bestDurationSeconds) }}</td>
+                  <td class="num">
+                    {{ ex.bestEstimated1RmKg ? ex.bestEstimated1RmKg + ' kg' : '—' }}
+                  </td>
+                  <td>{{ formatResult(ex.latestWeightKg, ex.latestReps, ex.latestDurationSeconds) }}</td>
+                  <td>
+                    <span class="trend-badge" [class]="'trend-' + ex.trend.toLowerCase()">
+                      {{ trendLabel(ex.trend) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <details class="markdown-preview">
+      <summary>Podgląd wygenerowanego raportu Markdown ({{ r.aiMarkdown.length }} znaków)</summary>
+      <pre class="markdown-box">{{ r.aiMarkdown }}</pre>
+    </details>
+  }
+</div>
