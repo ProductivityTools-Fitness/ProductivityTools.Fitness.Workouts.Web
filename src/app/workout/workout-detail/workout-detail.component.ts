@@ -53,6 +53,10 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   private timerInterval: ReturnType<typeof setInterval> | null = null;
 
   isEditingCompleted = signal<boolean>(false);
+  isPlanned = computed<boolean>(() => {
+    const w = this.workout();
+    return w?.status === 'PLANNED';
+  });
   isReadOnly = computed<boolean>(() => {
     const w = this.workout();
     return w?.status === 'COMPLETED' && !this.isEditingCompleted();
@@ -72,6 +76,7 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
   editingNotesExerciseId = signal<number | null>(null);
   exerciseNotesInput = '';
   savingNotesExerciseId = signal<number | null>(null);
+  isStartingTraining = signal<boolean>(false);
   isCompletingTraining = signal<boolean>(false);
   showDeleteWorkoutModal = signal<boolean>(false);
   isDeletingWorkout = signal<boolean>(false);
@@ -417,6 +422,10 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
         }
       }
       return w.durationSeconds != null ? this.formatSeconds(w.durationSeconds) : '0s';
+    }
+
+    if (this.isPlanned()) {
+      return '0s';
     }
 
     // Active workout in progress: calculate elapsed time from startTime to current time
@@ -831,6 +840,25 @@ export class WorkoutDetailComponent implements OnInit, OnDestroy {
         // Ignore release errors
       }
     }
+  }
+
+  startTraining(): void {
+    const w = this.workout();
+    if (!w || !w.id || this.isStartingTraining()) return;
+
+    this.isStartingTraining.set(true);
+    this.workoutService.startWorkout(w.id).subscribe({
+      next: (updatedWorkout) => {
+        this.workout.set(updatedWorkout);
+        this.isStartingTraining.set(false);
+        this.startDurationTimer();
+      },
+      error: (err) => {
+        console.error('Error starting training:', err);
+        this.notificationService.showError('Failed to start training. Please try again.');
+        this.isStartingTraining.set(false);
+      },
+    });
   }
 
   completeTraining(): void {

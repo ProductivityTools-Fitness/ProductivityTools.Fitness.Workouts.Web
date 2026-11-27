@@ -116,6 +116,12 @@ export class WorkoutService {
     return this.http.post<WorkoutExercise>(`${environment.apiUrl}/workout/updateExerciseRestTimer`, request);
   }
 
+  startWorkout(workoutId: number): Observable<Workout> {
+    return this.http.post<Workout>(`${environment.apiUrl}/workout/startWorkout`, {
+      workoutId,
+    });
+  }
+
   completeWorkout(workoutId: number): Observable<Workout> {
     return this.http.post<Workout>(`${environment.apiUrl}/workout/completeWorkout`, {
       workoutId,

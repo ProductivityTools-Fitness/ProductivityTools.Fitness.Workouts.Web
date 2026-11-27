@@ -1,6 +1,6 @@
 import { Exercise } from '../../exercise/models/exercise';
 
-export type WorkoutStatus = 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type WorkoutStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 export interface WorkoutSet {
   id?: number;
@@ -36,7 +36,7 @@ export interface Workout {
   workoutNumber?: number;
   userId?: number;
   title: string;
-  startTime?: string | Date;
+  startTime?: string | Date | null;
   endTime?: string | Date | null;
   durationSeconds?: number;
   status?: WorkoutStatus | string;

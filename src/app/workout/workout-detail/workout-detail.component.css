@@ -172,6 +172,35 @@
   color: #15803d;
 }
 
+.status-badge.planned {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.date-planned {
+  color: #b45309;
+  font-style: italic;
+}
+
+.btn-start-inline {
+  background-color: #2563eb;
+  color: #ffffff;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+.btn-start-inline:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.btn-start-inline:disabled {
+  background-color: #93c5fd;
+  cursor: not-allowed;
+}
+
 .workout-notes {
   background-color: #f8fafc;
   padding: 0.65rem 0.85rem;
@@ -860,11 +889,22 @@
   flex-wrap: wrap;
 }
 
+.btn-start-training,
 .btn-complete-training,
 .btn-done-editing,
 .btn-edit-training,
 .btn-delete-training {
   color: #fff;
+}
+
+.btn-start-training {
+  background-color: #2563eb;
+}
+.btn-start-training:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+.btn-start-training:disabled {
+  background-color: #93c5fd;
 }
 
 .btn-complete-training,

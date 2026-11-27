@@ -46,7 +46,13 @@
                   {{ getWorkoutTitle(workout) }}
                 </a>
               </td>
-              <td class="col-date">{{ workout.startTime | date:'mediumDate' }}</td>
+              <td class="col-date">
+                @if (workout.startTime) {
+                  {{ workout.startTime | date:'mediumDate' }}
+                } @else {
+                  <span class="date-planned">Planned</span>
+                }
+              </td>
               <td class="col-status">
                 <span class="status-badge" [class]="workout.status?.toLowerCase()">
                   {{ workout.status }}

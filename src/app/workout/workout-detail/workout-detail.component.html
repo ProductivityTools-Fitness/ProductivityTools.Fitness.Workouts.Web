@@ -39,7 +39,22 @@
         <div class="workout-meta">
           <p><strong>Workout Number:</strong> #{{ workout()!.workoutNumber ?? workout()!.id }}</p>
           <p><strong>Status: </strong><span class="status-badge" [class]="workout()!.status?.toLowerCase()">{{ workout()!.status }}</span></p>
-          <p><strong>Date:</strong> {{ workout()!.startTime | date:'medium' }}</p>
+          <p>
+            <strong>Date:</strong>
+            @if (isPlanned()) {
+              <span class="date-planned">Not started</span>
+              <button
+                type="button"
+                class="btn btn-start-inline"
+                (click)="startTraining()"
+                [disabled]="isStartingTraining() || isDeletingWorkout()"
+              >
+                {{ isStartingTraining() ? 'Starting...' : '▶ Start' }}
+              </button>
+            } @else {
+              {{ workout()!.startTime | date:'medium' }}
+            }
+          </p>
           <p><strong>Duration:</strong> {{ getFormattedDuration() }}</p>
           <p><strong>Volume:</strong> {{ getTotalVolume() }} kg</p>
           <p><strong>Sets:</strong> {{ getCompletedSetsCount() }} / {{ getTotalSetsCount() }}</p>
@@ -504,7 +519,16 @@
         }
 
         <div class="workout-actions-footer">
-          @if (workout()!.status !== 'COMPLETED') {
+          @if (isPlanned()) {
+            <button
+              type="button"
+              class="btn btn-action-lg btn-start-training"
+              (click)="startTraining()"
+              [disabled]="isStartingTraining() || isDeletingWorkout()"
+            >
+              {{ isStartingTraining() ? 'Starting...' : '▶ Start Training' }}
+            </button>
+          } @else if (workout()!.status !== 'COMPLETED') {
             <button
               type="button"
               class="btn btn-action-lg btn-complete-training"

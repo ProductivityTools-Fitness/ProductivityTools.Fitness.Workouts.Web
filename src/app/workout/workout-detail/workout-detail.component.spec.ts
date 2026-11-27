@@ -1715,4 +1715,55 @@ describe('WorkoutDetailComponent', () => {
       expect(navigateSpy).toHaveBeenCalledWith(['/workouts/detail'], { queryParams: { workoutId: 3 } });
     });
   });
+
+  describe('Planned workout', () => {
+    it('should render Start button instead of Complete Training and keep duration at 0s', () => {
+      const planned: Workout = {
+        id: 300,
+        workoutNumber: 30,
+        title: 'Sobotni plan',
+        status: 'PLANNED',
+        startTime: null,
+        exercises: [],
+      };
+      component.workout.set(planned);
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      expect(compiled.querySelector('.btn-start-inline')).toBeTruthy();
+      expect(compiled.querySelector('.btn-start-training')).toBeTruthy();
+      expect(compiled.querySelector('.btn-complete-training')).toBeNull();
+      expect(component.getFormattedDuration()).toBe('0s');
+      expect(component.isReadOnly()).toBe(false);
+    });
+
+    it('should call workoutService.startWorkout and transition to IN_PROGRESS', () => {
+      const workoutService = TestBed.inject(WorkoutService);
+      const planned: Workout = {
+        id: 301,
+        workoutNumber: 31,
+        title: 'Sobotni plan',
+        status: 'PLANNED',
+        startTime: null,
+        exercises: [],
+      };
+      const started: Workout = {
+        ...planned,
+        status: 'IN_PROGRESS',
+        startTime: new Date().toISOString(),
+      };
+      component.workout.set(planned);
+      fixture.detectChanges();
+
+      const startSpy = vi.spyOn(workoutService, 'startWorkout').mockReturnValue(of(started));
+      const compiled = fixture.nativeElement as HTMLElement;
+      compiled.querySelector<HTMLButtonElement>('.btn-start-training')?.click();
+      fixture.detectChanges();
+
+      expect(startSpy).toHaveBeenCalledWith(301);
+      expect(component.workout()?.status).toBe('IN_PROGRESS');
+      expect(component.isPlanned()).toBe(false);
+      expect(compiled.querySelector('.btn-complete-training')).toBeTruthy();
+    });
+  });
 });
