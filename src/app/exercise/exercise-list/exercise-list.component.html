@@ -34,6 +34,18 @@
     </div>
   } @else if (exerciseList().length > 0) {
     <div class="filters-bar">
+      <div class="filter-group filter-search">
+        <label for="exercise-search" class="filter-label">Szukaj</label>
+        <input
+          id="exercise-search"
+          type="search"
+          class="filter-input"
+          placeholder="Wpisz nazwę ćwiczenia..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+      </div>
+
       <div class="filter-group">
         <label for="muscle-filter" class="filter-label">Mięśnie</label>
         <select

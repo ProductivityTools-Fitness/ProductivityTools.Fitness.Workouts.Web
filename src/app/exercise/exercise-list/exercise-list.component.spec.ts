@@ -139,5 +139,18 @@ describe('ExerciseListComponent', () => {
     component.clearFilters();
     expect(component.hasActiveFilters()).toBe(false);
     expect(component.filteredExerciseList().length).toBe(3);
+
+    // Filter by name (case-insensitive, multi-word)
+    component.searchQuery.set('barbell press');
+    expect(component.filteredExerciseList().map((e) => e.id)).toEqual([1, 3]);
+    expect(component.hasActiveFilters()).toBe(true);
+
+    component.searchQuery.set('CURL');
+    expect(component.filteredExerciseList().map((e) => e.id)).toEqual([2]);
+
+    component.clearFilters();
+    expect(component.searchQuery()).toBe('');
+    expect(component.hasActiveFilters()).toBe(false);
+    expect(component.filteredExerciseList().length).toBe(3);
   });
 });

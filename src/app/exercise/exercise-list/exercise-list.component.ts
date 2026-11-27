@@ -20,6 +20,7 @@ export class ExerciseListComponent implements OnInit {
   private readonly router = inject(Router);
 
   exerciseList = signal<Exercise[]>([]);
+  searchQuery = signal<string>('');
   selectedMuscle = signal<string>('');
   selectedEquipment = signal<string>('');
   selectedExerciseIds = signal<Set<number>>(new Set());
@@ -56,10 +57,21 @@ export class ExerciseListComponent implements OnInit {
   });
 
   readonly filteredExerciseList = computed<Exercise[]>(() => {
+    const searchTerms = this.searchQuery()
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
     const muscleFilter = this.selectedMuscle().trim().toLowerCase();
     const equipmentFilter = this.selectedEquipment().trim().toLowerCase();
 
     return this.exerciseList().filter((exercise) => {
+      if (searchTerms.length > 0) {
+        const name = (exercise.name ?? '').toLowerCase();
+        if (!searchTerms.every((term) => name.includes(term))) {
+          return false;
+        }
+      }
       if (muscleFilter) {
         const exerciseMuscles = this.getExerciseMuscles(exercise).map((m) => m.toLowerCase());
         if (!exerciseMuscles.includes(muscleFilter)) {
@@ -77,7 +89,9 @@ export class ExerciseListComponent implements OnInit {
   });
 
   readonly hasActiveFilters = computed<boolean>(() =>
-    Boolean(this.selectedMuscle().trim() || this.selectedEquipment().trim()),
+    Boolean(
+      this.searchQuery().trim() || this.selectedMuscle().trim() || this.selectedEquipment().trim(),
+    ),
   );
 
   ngOnInit(): void {
@@ -112,6 +126,7 @@ export class ExerciseListComponent implements OnInit {
   readonly formatMuscle = formatMuscleLabel;
 
   clearFilters(): void {
+    this.searchQuery.set('');
     this.selectedMuscle.set('');
     this.selectedEquipment.set('');
   }
