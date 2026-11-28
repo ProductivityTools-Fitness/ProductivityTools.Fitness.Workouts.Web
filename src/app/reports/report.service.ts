@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { BackendConfigService } from '../core/backend-config.service';
 import { TrainingReport } from './models/training-report';
 
 @Injectable({
@@ -9,9 +9,10 @@ import { TrainingReport } from './models/training-report';
 })
 export class ReportService {
   private readonly http = inject(HttpClient);
+  private readonly backendConfig = inject(BackendConfigService);
 
   getTrainingReport(days = 90): Observable<TrainingReport> {
-    return this.http.get<TrainingReport>(`${environment.apiUrl}/reports/training`, {
+    return this.http.get<TrainingReport>(`${this.backendConfig.apiUrl()}/reports/training`, {
       params: { days },
     });
   }

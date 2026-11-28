@@ -1,0 +1,96 @@
+<div class="debug-bar" role="region" aria-label="Debug bar">
+  <div class="debug-left">
+    <span
+      class="status-dot"
+      [class.online]="isOnline()"
+      [class.offline]="!isOnline()"
+      [title]="isOnline() ? 'Online' : 'Offline'"
+    ></span>
+
+    <span class="debug-item">
+      Session:
+      <strong>{{ authService.userEmail() || 'Not signed in' }}</strong>
+    </span>
+
+    <span class="debug-sep" aria-hidden="true"></span>
+
+    <label class="env-picker" [class.env-backup]="isBackupSelected()">
+      <span class="env-label">Backend:</span>
+      <select
+        class="env-select"
+        aria-label="Backend environment"
+        [ngModel]="backendConfig.selectedUrl()"
+        (ngModelChange)="onBackendChange($event)"
+        [title]="backendConfig.apiUrl()"
+      >
+        @for (opt of backendConfig.options; track opt.url) {
+          <option [value]="opt.url">{{ opt.label }}</option>
+        }
+      </select>
+    </label>
+
+    @if (serverName()) {
+      <span class="debug-sep" aria-hidden="true"></span>
+      <span class="debug-item server-badge" [title]="'Server host: ' + serverName()">
+        Host: <strong>{{ serverName() }}</strong>
+      </span>
+    }
+  </div>
+
+  <div class="debug-right">
+    <div class="status-trigger-wrap">
+      <button
+        type="button"
+        class="status-trigger"
+        [class]="'status-trigger status-' + (debugStatus.current()?.type || 'idle')"
+        (click)="toggleHistory($event)"
+        title="Click to view debug history"
+      >
+        <span class="status-indicator" aria-hidden="true"></span>
+        <span class="status-text">{{ currentStatusText() }}</span>
+      </button>
+
+      @if (showHistory()) {
+        <div class="history-popover" (click)="$event.stopPropagation()">
+          <div class="history-header">
+            <span>Debug History ({{ debugStatus.history().length }})</span>
+            <div class="history-actions">
+              <button type="button" class="history-btn" (click)="clearHistory($event)" title="Clear history">
+                Clear
+              </button>
+              <button type="button" class="history-btn" (click)="showHistory.set(false)" title="Close">
+                ✕
+              </button>
+            </div>
+          </div>
+          <div class="history-list">
+            @for (item of debugStatus.history(); track item.id) {
+              <div class="history-row" [class]="'history-row status-' + item.type">
+                {{ formatEntry(item) }}
+              </div>
+            } @empty {
+              <div class="history-empty">No events yet.</div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (authService.isLoggedIn()) {
+      <span class="debug-sep" aria-hidden="true"></span>
+      <span class="debug-item token-info">
+        Token: <strong>{{ formattedTokenTime() }}</strong>
+      </span>
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="refreshToken()"
+        [disabled]="isRefreshingToken()"
+        title="Force refresh auth token"
+        aria-label="Force refresh auth token"
+      >
+        ↻
+      </button>
+    }
+  </div>
+</div>

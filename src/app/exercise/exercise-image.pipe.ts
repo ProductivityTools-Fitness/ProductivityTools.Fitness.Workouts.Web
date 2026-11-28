@@ -1,5 +1,5 @@
-import { Pipe, PipeTransform } from '@angular/core';
-import { environment } from '../../environments/environment';
+import { inject, Pipe, PipeTransform } from '@angular/core';
+import { BackendConfigService } from '../core/backend-config.service';
 import { Exercise } from './models/exercise';
 
 /**
@@ -15,12 +15,14 @@ import { Exercise } from './models/exercise';
   name: 'exerciseImage',
 })
 export class ExerciseImagePipe implements PipeTransform {
+  private readonly backendConfig = inject(BackendConfigService);
+
   transform(exercise: Exercise | null | undefined): string | null {
     if (!exercise) {
       return null;
     }
     if (exercise.imageFileName && exercise.id) {
-      return `${environment.apiUrl}/exercise/${exercise.id}/image`;
+      return `${this.backendConfig.apiUrl()}/exercise/${exercise.id}/image`;
     }
     return exercise.gifUrl ?? exercise.iconUrl ?? null;
   }

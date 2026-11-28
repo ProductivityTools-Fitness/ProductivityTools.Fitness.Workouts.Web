@@ -1,14 +1,29 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, from, switchMap, throwError } from 'rxjs';
+import { catchError, from, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { NotificationService } from '../notification/notification.service';
+import { DebugStatusService } from '../core/debug-status.service';
+
+function shortPath(url: string): string {
+  try {
+    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+    return parsed.pathname.replace(/^\/api/, '') || '/';
+  } catch {
+    return url;
+  }
+}
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const notificationService = inject(NotificationService);
+  const debugStatus = inject(DebugStatusService);
   const router = inject(Router);
+  const startedAt = Date.now();
+  const label = `${req.method} ${shortPath(req.url)}`;
+
+  debugStatus.pending(label);
 
   return from(authService.getIdToken()).pipe(
     switchMap((token) => {
@@ -22,7 +37,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         });
       }
 
-      return next(authReq);
+      return next(authReq).pipe(
+        tap((event) => {
+          if (event instanceof HttpResponse) {
+            debugStatus.success(`${label} (${event.status})`, Date.now() - startedAt);
+          }
+        })
+      );
     }),
     catchError((error: unknown) => {
       const status =
@@ -31,6 +52,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           : typeof error === 'object' && error !== null && 'status' in error
             ? Number((error as { status: unknown }).status)
             : undefined;
+
+      debugStatus.error(`${label} → ${status ?? 'ERR'}`, Date.now() - startedAt);
 
       console.warn('[authInterceptor] Caught HTTP error:', {
         url: req.url,

@@ -9,7 +9,7 @@ import {
   Auth,
 } from 'firebase/auth';
 import { auth } from '../firebase.config';
-import { environment } from '../../environments/environment';
+import { BackendConfigService } from '../core/backend-config.service';
 
 interface UserProfileResponse {
   id: number;
@@ -24,10 +24,12 @@ interface UserProfileResponse {
 export class AuthService {
   private readonly auth: Auth = auth;
   private readonly http = inject(HttpClient, { optional: true });
+  private readonly backendConfig = inject(BackendConfigService);
 
   readonly currentUser = signal<User | null>(null);
   readonly isLoading = signal<boolean>(true);
   readonly isAdmin = signal<boolean>(false);
+  readonly tokenRefreshTime = signal<Date | null>(null);
 
   readonly isLoggedIn = computed(() => !!this.currentUser());
   readonly userEmail = computed(() => this.currentUser()?.email ?? null);
@@ -58,7 +60,7 @@ export class AuthService {
     if (!this.http) {
       return;
     }
-    this.http.get<UserProfileResponse>(`${environment.apiUrl}/user/me`).subscribe({
+    this.http.get<UserProfileResponse>(`${this.backendConfig.apiUrl()}/user/me`).subscribe({
       next: (profile) => this.isAdmin.set(Boolean(profile?.isAdmin)),
       error: () => this.isAdmin.set(false),
     });
@@ -89,6 +91,14 @@ export class AuthService {
     }
     const user = this.currentUser() || this.auth.currentUser;
     if (!user) return null;
-    return user.getIdToken(forceRefresh);
+    const token = await user.getIdToken(forceRefresh);
+    if (forceRefresh || !this.tokenRefreshTime()) {
+      this.tokenRefreshTime.set(new Date());
+    }
+    return token;
+  }
+
+  async refreshToken(): Promise<string | null> {
+    return this.getIdToken(true);
   }
 }

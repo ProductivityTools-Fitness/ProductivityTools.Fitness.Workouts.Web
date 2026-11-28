@@ -3,10 +3,11 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './auth/auth.service';
 import { NotificationComponent } from './notification/notification.component';
 import { NotificationService } from './notification/notification.service';
+import { DebugBarComponent } from './debug-bar/debug-bar.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationComponent, DebugBarComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })

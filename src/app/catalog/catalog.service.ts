@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { BackendConfigService } from '../core/backend-config.service';
 import { CatalogSearchResult } from './models/catalog-search-result';
 import { Exercise } from '../exercise/models/exercise';
 
@@ -10,6 +10,11 @@ import { Exercise } from '../exercise/models/exercise';
 })
 export class CatalogService {
   private readonly http = inject(HttpClient);
+  private readonly backendConfig = inject(BackendConfigService);
+
+  private get apiUrl(): string {
+    return this.backendConfig.apiUrl();
+  }
 
   searchExercises(
     name?: string,
@@ -29,28 +34,28 @@ export class CatalogService {
     }
 
     return this.http.get<CatalogSearchResult[]>(
-      `${environment.apiUrl}/catalog/search`,
+      `${this.apiUrl}/catalog/search`,
       { params },
     );
   }
 
   importExercise(catalogExerciseId: string): Observable<Exercise> {
     return this.http.post<Exercise>(
-      `${environment.apiUrl}/catalog/import/${catalogExerciseId}`,
+      `${this.apiUrl}/catalog/import/${catalogExerciseId}`,
       {},
     );
   }
 
   reimportExercise(catalogExerciseId: string): Observable<Exercise> {
     return this.http.post<Exercise>(
-      `${environment.apiUrl}/catalog/reimport/${encodeURIComponent(catalogExerciseId)}`,
+      `${this.apiUrl}/catalog/reimport/${encodeURIComponent(catalogExerciseId)}`,
       {},
     );
   }
 
   reimportAllExercises(): Observable<{ updated: number; failed: number }> {
     return this.http.post<{ updated: number; failed: number }>(
-      `${environment.apiUrl}/catalog/reimport-all`,
+      `${this.apiUrl}/catalog/reimport-all`,
       {},
     );
   }
@@ -60,6 +65,6 @@ export class CatalogService {
    * Served without authentication, because a browser cannot attach headers to an <img> request.
    */
   previewImageUrl(catalogExerciseId: string): string {
-    return `${environment.apiUrl}/catalog/${catalogExerciseId}/image`;
+    return `${this.apiUrl}/catalog/${catalogExerciseId}/image`;
   }
 }
